@@ -5,7 +5,7 @@ module Lib
     ) where
 
 import Data.Attoparsec.Text
-import Data.Text hiding (take, takeWhile)
+import Data.Text hiding (take, takeWhile, break, tail)
 import Prelude hiding (take, takeWhile)
 import Control.Applicative
 
@@ -59,10 +59,13 @@ data Tag = DataSpecifier { dsName   :: FieldName
                          }
          | EOH
          | EOR
-         deriving (Show)
+         deriving (Eq, Show)
 
-data Log = Log { logHeaderTxt :: Text
-               , logTags      :: [Tag]
+data Record = Record [Tag] deriving (Show)
+
+data Log = Log { logHeaderTxt  :: Text
+               , logHeaderTags :: [Tag]
+               , logRecords    :: [Tag]
                }
                deriving (Show)
 
@@ -113,8 +116,9 @@ parseTag = do
 parseLog :: Parser Log
 parseLog = do
     headerTxt <- takeWhile  $ (/=) '<'
-    tags <- many parseTag
-    return $ Log headerTxt tags
+    (headerTags, bodyTags) <- fmap (break $ (==) EOH) $ many parseTag
+
+    return $ Log headerTxt headerTags (tail bodyTags)
 
 someFunc :: IO ()
 someFunc = do
