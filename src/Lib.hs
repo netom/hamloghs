@@ -123,5 +123,5 @@ parseLog = do
 someFunc :: IO ()
 someFunc = do
     putStrLn "someFunc"
-    print $ parseOnly parseLog "HamLogHS v0.0.1\n<APP_HAMLOGHS_TEST:3>121<EOH><call:6>HA5FTL\nthis is some extra data"
+    print $ parseOnly parseLog "HamLogHS v0.0.1\n<APP_HAMLOGHS_TEST:3>121<EOH><call:6>HA5FTL\nthis is some extra data<qth:8>Budapest"
     --print $ parseOnly (many parseDataSpecifier) "<call:6>HA5FTL\nthis is some extra data"

@@ -16,7 +16,6 @@ and XML.
 ## Development strategy: *Do one thing, do it well*
 
 * The aim of the project is to develop a set of tools each a with narrow featureset.
-* Each tool is a separate executable
 * The main theme is data file reading / writing in different formats
   * Filtering, record manipulation and aggregation also important
 * The tools "speak" the same format: ADIF (ADI)
@@ -26,13 +25,13 @@ and XML.
   * List unconfirmed contacts counting towards my DXCC award
 * The tools accept command-line arguments, and can parse environment variables. Config file parsing is not included.
 
-## Planned executables
+## Planned tools
 
 * Creating records
   * HL_MY_GRIDSQUARE=JN97mm hl-record --mode SSB -t now --rst-rcvd 59 --rst-sent 56 --call OM2ZJQ >> log.adi
 * Merging / splitting logs stored in a directory tree, partitioned on date
-  * cat log.adi | hl-append -d my_log_dir
-  * hl-dump -d my_log_dir --from-date=yesterday --to-date=now
+  * cat log.adi | hl-import -d my_log_dir
+  * hl-export -d my_log_dir --from-date=yesterday --to-date=now
 * Read/write various formats
   * hl-read-adx, hd-write-adx
   * Excel XML
