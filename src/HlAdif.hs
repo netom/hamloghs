@@ -51,23 +51,24 @@ import Control.Applicative
 type FieldName = Text
 type FieldLength = Int
 
--- A DataSpecifier is the ADIF representation of piece of data or metadata,
--- e.g. a field of a record, or the end of header / end of record marks.
+-- A Tag is the ADIF representation of piece of data or metadata,
+-- e.g. a field of a record (DataSpecifier), or the end of header / end
+-- of record marks.
 --
 -- <TAGNAME:4>data some extra data including the space after "data"
 --
-data DataSpecifier = DataSpecifier { dsName   :: FieldName
-                                   , dsLength :: FieldLength
-                                   , dsType   :: Maybe Text
-                                   , dsData   :: Text
-                                   , dsExtra  :: Text
-                                   }
+data Tag = DataSpecifier { dsName   :: FieldName
+                         , dsLength :: FieldLength
+                         , dsType   :: Maybe Text
+                         , dsData   :: Text
+                         , dsExtra  :: Text
+                         }
          | EOH
          | EOR
          deriving (Eq, Show)
 
 -- A record is just a list of data specifiers
-data Record = Record [DataSpecifier] deriving (Show)
+data Record = Record [Tag] deriving (Show)
 
 -- A log is made out of an optional header string and data specifiers in
 -- the header, and a list of records.
@@ -77,10 +78,10 @@ data Log = Log { logHeaderTxt :: Text
                }
                deriving (Show)
 
-parseDataSpecifier :: Parser DataSpecifier
-parseDataSpecifier = do
-        (asciiCI "<EOH>" >> return EOH)
-    <|> (asciiCI "<EOR>" >> return EOR)
+parseTag :: Parser Tag
+parseTag = do
+        (asciiCI "<EOH>" >> (takeWhile $ (/=) '<') >> return EOH)
+    <|> (asciiCI "<EOR>" >> (takeWhile $ (/=) '<') >> return EOR)
     <|> do
         char '<'
         name <- takeWhile $ (/=) ':'
@@ -101,23 +102,23 @@ parseDataSpecifier = do
 
         return $ DataSpecifier name length mbType dsdata extra
 
-records :: [DataSpecifier] -> [Record]
-records dss = Prelude.foldr f [] dss
+records :: [Tag] -> [Record]
+records ts = Prelude.foldr f [] ts
     where
-        f :: DataSpecifier -> [Record] -> [Record]
+        f :: Tag -> [Record] -> [Record]
         f EOR rs             = Record [] : rs
-        f d []               = [Record [d]]
-        f d (Record ds : rs) = Record (d : ds) : rs
+        f t []               = [Record [t]]
+        f t (Record ts : rs) = Record (t : ts) : rs
 
 parseLog :: Parser Log
 parseLog = do
     headerTxt <- takeWhile $ (/=) '<'
-    dataSpecifiers <- many parseDataSpecifier
+    dataSpecifiers <- many parseTag
     let
-        (headerDataSpecifiers, bodyDataSpecifiers) = break ((==) EOH) dataSpecifiers
-        bodyRecords = records bodyDataSpecifiers
+        (headerTags, bodyTags) = break ((==) EOH) dataSpecifiers
+        bodyRecords = records $ tail bodyTags
 
-    return $ Log headerTxt (Record headerDataSpecifiers) bodyRecords
+    return $ Log headerTxt (Record headerTags) bodyRecords
 
 testParser :: Text -> Either String Log
 testParser = parseOnly parseLog
