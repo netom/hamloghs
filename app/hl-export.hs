@@ -1,28 +1,38 @@
 module Main where
 
-import Lib
+import Data.Maybe
+import Data.Text.IO hiding (putStrLn)
+import HlAdif
+import HlOptions
 import Options.Applicative
+import Prelude hiding (readFile)
+import System.Environment
+import System.IO hiding (readFile)
 
 data DatabaseOptions = DatabaseOptions
   { basedir :: String
   }
 
-databaseOptions :: ParserInfo DatabaseOptions
-databaseOptions = info (helper <*> (DatabaseOptions
-  <$> strOption -- TODO: options should go into the Lib
-      ( long "basedir"
-     <> value "~/.hamloghs/data"
-     <> short 'b'
-     <> metavar "BASEDIR"
-     <> help "The root directod of the " )
-  ))
-  ( fullDesc
-         <> progDesc "Print a greeting for TARGET"
-         <> header "hello - a test for optparse-applicative" )
+getDatabaseOptionsParserInfo :: IO (ParserInfo DatabaseOptions)
+getDatabaseOptionsParserInfo = do
+    homeOption <- getHomeOption
 
-greet :: DatabaseOptions -> IO ()
-greet dbo = putStrLn $ "Using " ++ basedir dbo
+    return $ info (helper <*> (
+        DatabaseOptions
+            <$> homeOption
+      )) (
+        fullDesc
+            <> progDesc "Export the ADIF database to a single file"
+      )
+
+doExport :: DatabaseOptions -> IO ()
+doExport dbo = do
+    putStrLn "Exporting ADIF..."
+    parsedLog <- testParser <$> readFile "/home/netom/.local/share/WSJT-X/wsjtx_log.adi"
+    putStrLn $ show parsedLog
+    putStrLn "Export complete."
 
 main :: IO ()
 main = do
-    execParser databaseOptions >>= greet
+    x <- getDatabaseOptionsParserInfo
+    execParser x >>= doExport

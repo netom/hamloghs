@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import HlAdif
 
 main :: IO ()
-main = someFunc
+main = putStrLn "I'm not ready yet."

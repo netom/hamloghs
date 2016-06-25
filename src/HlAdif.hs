@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Lib
-    ( someFunc
+module HlAdif
+    ( testParser
     ) where
 
 import Data.Attoparsec.Text
@@ -51,26 +51,34 @@ import Control.Applicative
 type FieldName = Text
 type FieldLength = Int
 
-data Tag = DataSpecifier { dsName   :: FieldName
-                         , dsLength :: FieldLength
-                         , dsType   :: Maybe Text
-                         , dsData   :: Text
-                         , dsExtra  :: Text
-                         }
+-- A DataSpecifier is the ADIF representation of piece of data or metadata,
+-- e.g. a field of a record, or the end of header / end of record marks.
+--
+-- <TAGNAME:4>data some extra data including the space after "data"
+--
+data DataSpecifier = DataSpecifier { dsName   :: FieldName
+                                   , dsLength :: FieldLength
+                                   , dsType   :: Maybe Text
+                                   , dsData   :: Text
+                                   , dsExtra  :: Text
+                                   }
          | EOH
          | EOR
          deriving (Eq, Show)
 
-data Record = Record [Tag] deriving (Show)
+-- A record is just a list of data specifiers
+data Record = Record [DataSpecifier] deriving (Show)
 
-data Log = Log { logHeaderTxt  :: Text
-               , logHeaderTags :: [Tag]
-               , logRecords    :: [Tag]
+-- A log is made out of an optional header string and data specifiers in
+-- the header, and a list of records.
+data Log = Log { logHeaderTxt :: Text
+               , logHeaderRecord :: Record
+               , logRecords :: [Record]
                }
                deriving (Show)
 
-parseTag :: Parser Tag
-parseTag = do
+parseDataSpecifier :: Parser DataSpecifier
+parseDataSpecifier = do
         (asciiCI "<EOH>" >> return EOH)
     <|> (asciiCI "<EOR>" >> return EOR)
     <|> do
@@ -93,35 +101,23 @@ parseTag = do
 
         return $ DataSpecifier name length mbType dsdata extra
 
--- parseHeader :: Parser (Maybe Header)
--- parseHeader = do
---     headertxt <- takeWhile  $ (/=) '<'
---     if headertxt == "" then return Nothing else do
---         dss <- many parseDataSpecifier
---         asciiCI "<EOH>"
---         return $ Just $ Header headertxt dss
--- 
--- parseRecord :: Parser Record
--- parseRecord = do
---     dss <- many parseDataSpecifier
---     asciiCI "<EOR>"
---     return dss
--- 
--- parseBody :: Parser Body
--- parseBody = do
---     skipSpace
---     many parseDataSpecifier
--- 
+records :: [DataSpecifier] -> [Record]
+records dss = Prelude.foldr f [] dss
+    where
+        f :: DataSpecifier -> [Record] -> [Record]
+        f EOR rs             = Record [] : rs
+        f d []               = [Record [d]]
+        f d (Record ds : rs) = Record (d : ds) : rs
 
 parseLog :: Parser Log
 parseLog = do
-    headerTxt <- takeWhile  $ (/=) '<'
-    (headerTags, bodyTags) <- fmap (break $ (==) EOH) $ many parseTag
+    headerTxt <- takeWhile $ (/=) '<'
+    dataSpecifiers <- many parseDataSpecifier
+    let
+        (headerDataSpecifiers, bodyDataSpecifiers) = break ((==) EOH) dataSpecifiers
+        bodyRecords = records bodyDataSpecifiers
 
-    return $ Log headerTxt headerTags (tail bodyTags)
+    return $ Log headerTxt (Record headerDataSpecifiers) bodyRecords
 
-someFunc :: IO ()
-someFunc = do
-    putStrLn "someFunc"
-    print $ parseOnly parseLog "HamLogHS v0.0.1\n<APP_HAMLOGHS_TEST:3>121<EOH><call:6>HA5FTL\nthis is some extra data<qth:8>Budapest"
-    --print $ parseOnly (many parseDataSpecifier) "<call:6>HA5FTL\nthis is some extra data"
+testParser :: Text -> Either String Log
+testParser = parseOnly parseLog
