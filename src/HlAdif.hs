@@ -5,8 +5,9 @@ module HlAdif
     ) where
 
 import Data.Attoparsec.Text
-import Data.List (foldl')
-import Data.Text hiding (take, takeWhile, break, tail, foldl')
+import Data.List (foldl', intercalate)
+import Data.Maybe
+import Data.Text hiding (take, takeWhile, break, tail, foldl', intercalate)
 import Prelude hiding (take, takeWhile)
 import Control.Applicative
 
@@ -71,12 +72,25 @@ data Tag = CALL Text
          | EOR
          deriving (Eq, Ord, Show)
 
+maybeShowTagData :: Tag -> Maybe String
+maybeShowTagData (CALL d)              = Just $ unpack d
+maybeShowTagData (QSO_DATE d)          = Just $ unpack d
+maybeShowTagData (TIME_ON d)           = Just $ unpack d
+maybeShowTagData (DataSpecifier _ _ d) = Just $ unpack d
+maybeShowTagData _ = Nothing
+
 -- A record is just a list of data specifiers
 data Record = Record { recCall    :: Maybe Tag
                      , recQsoDate :: Maybe Tag
                      , recTimeOn  :: Maybe Tag
                      , recTags    :: [Tag]
-                     } deriving (Show)
+                     }
+
+instance Show Record where
+    show (Record call date timeOn tags) =
+        "Call with " ++ (fromMaybe "UNKNOWN CALL" $ call   >>= maybeShowTagData) ++
+        " at "       ++ (fromMaybe "UNKNOWN DATE" $ date   >>= maybeShowTagData) ++
+        " "          ++ (fromMaybe "UNKNOWN TIME" $ timeOn >>= maybeShowTagData)
 
 -- A log is made out of an optional header string and data specifiers in
 -- the header, and a list of records.
@@ -84,7 +98,9 @@ data Log = Log { logHeaderTxt :: Text
                , logHeaderTags :: [Tag]
                , logRecords :: [Record]
                }
-               deriving (Show)
+
+instance Show Log where
+    show (Log _ _ recs) = intercalate "\n**********\n" (Prelude.map show recs)
 
 -- Parse a simple tag like EOH or EOR, the ones without any data (and length,
 -- and type).
@@ -151,6 +167,10 @@ updateRecord t@(QSO_DATE _) (Record call _       timeOn ts) = Record call     (J
 updateRecord t@(TIME_ON _)  (Record call qsoDate _      ts) = Record call     qsoDate  (Just t) ts
 updateRecord t (Record call qsoDate timeOn ts)              = Record call qsoDate timeOn (t : ts)
 
+-- Break up a list of tags parsed from the body of an ADIF file to
+-- a neat list of records.
+-- Use the above updateRecord function to make sure call, qso_date and time_on
+-- get into their proper places in each record
 records :: [Tag] -> [Record]
 --records ts = foldl' (\ acc x -> f x acc) [] ts
 records ts = Prelude.foldr f [] ts
