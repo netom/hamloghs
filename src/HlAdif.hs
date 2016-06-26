@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module HlAdif
-    ( testParser
+    ( adifLogParser
     ) where
 
 import Data.Attoparsec.Text
@@ -88,8 +88,8 @@ data Record = Record { recCall    :: Maybe Tag
 
 instance Show Record where
     show (Record call date timeOn tags) =
-        "Call with " ++ (fromMaybe "UNKNOWN CALL" $ call   >>= maybeShowTagData) ++
-        " at "       ++ (fromMaybe "UNKNOWN DATE" $ date   >>= maybeShowTagData) ++
+        (fromMaybe "UNKNOWN CALL" $ call   >>= maybeShowTagData) ++
+        "\t"       ++ (fromMaybe "UNKNOWN DATE" $ date   >>= maybeShowTagData) ++
         " "          ++ (fromMaybe "UNKNOWN TIME" $ timeOn >>= maybeShowTagData)
 
 -- A log is made out of an optional header string and data specifiers in
@@ -100,7 +100,7 @@ data Log = Log { logHeaderTxt :: Text
                }
 
 instance Show Log where
-    show (Log _ _ recs) = intercalate "\n**********\n" (Prelude.map show recs)
+    show (Log _ _ recs) = intercalate "\n" (Prelude.map show recs)
 
 -- Parse a simple tag like EOH or EOR, the ones without any data (and length,
 -- and type).
@@ -190,5 +190,5 @@ parseLog = do
 
     return $ Log headerTxt headerTags bodyRecords
 
-testParser :: Text -> Either String Log
-testParser = parseOnly parseLog
+adifLogParser :: Text -> Either String Log
+adifLogParser = parseOnly parseLog

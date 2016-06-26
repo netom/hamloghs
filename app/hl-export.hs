@@ -9,30 +9,32 @@ import Prelude hiding (readFile)
 import System.Environment
 import System.IO hiding (readFile)
 
-data DatabaseOptions = DatabaseOptions
+data Options = Options
   { basedir :: String
+  , outputFormat :: OutputFormat
   }
 
-getDatabaseOptionsParserInfo :: IO (ParserInfo DatabaseOptions)
-getDatabaseOptionsParserInfo = do
+getOptionsParserInfo :: IO (ParserInfo Options)
+getOptionsParserInfo = do
     homeOption <- getHomeOption
 
     return $ info (helper <*> (
-        DatabaseOptions
+        Options
             <$> homeOption
+            <*> outputFormatOption
       )) (
         fullDesc
             <> progDesc "Export the ADIF database to a single file"
       )
 
-doExport :: DatabaseOptions -> IO ()
+doExport :: Options -> IO ()
 doExport dbo = do
-    putStrLn "Exporting ADIF..."
-    parsedLog <- testParser <$> readFile "/home/netom/.local/share/WSJT-X/wsjtx_log.adi"
-    putStrLn $ show parsedLog
-    putStrLn "Export complete."
+    parseResult <- adifLogParser <$> readFile (basedir dbo ++ "/data/hl.adi")
+    case parseResult of
+        Left errorMsg -> putStrLn errorMsg
+        Right log     -> putStrLn $ show log
 
 main :: IO ()
 main = do
-    x <- getDatabaseOptionsParserInfo
+    x <- getOptionsParserInfo
     execParser x >>= doExport

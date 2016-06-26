@@ -21,6 +21,8 @@ library
                      , text
                      , attoparsec
                      , optparse-applicative
+                     , directory
+                     , mtl
   default-language:    Haskell2010
 
 executable hl-import
