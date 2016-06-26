@@ -5,7 +5,8 @@ module HlAdif
     ) where
 
 import Data.Attoparsec.Text
-import Data.Text hiding (take, takeWhile, break, tail)
+import Data.List (foldl')
+import Data.Text hiding (take, takeWhile, break, tail, foldl')
 import Prelude hiding (take, takeWhile)
 import Control.Applicative
 
@@ -48,8 +49,10 @@ import Control.Applicative
 -- * OpenOffice / LibreOffice XML
 --     * Needs a template odf archive
 
-type FieldName = Text
-type FieldLength = Int
+
+
+
+
 
 -- A Tag is the ADIF representation of piece of data or metadata,
 -- e.g. a field of a record (DataSpecifier), or the end of header / end
@@ -57,58 +60,105 @@ type FieldLength = Int
 --
 -- <TAGNAME:4>data some extra data including the space after "data"
 --
-data Tag = DataSpecifier { dsName   :: FieldName
-                         , dsLength :: FieldLength
+data Tag = CALL Text
+         | QSO_DATE Text
+         | TIME_ON Text
+         | DataSpecifier { dsName   :: Text
                          , dsType   :: Maybe Text
                          , dsData   :: Text
-                         , dsExtra  :: Text
                          }
          | EOH
          | EOR
-         deriving (Eq, Show)
+         deriving (Eq, Ord, Show)
 
 -- A record is just a list of data specifiers
-data Record = Record [Tag] deriving (Show)
+data Record = Record { recCall    :: Maybe Tag
+                     , recQsoDate :: Maybe Tag
+                     , recTimeOn  :: Maybe Tag
+                     , recTags    :: [Tag]
+                     } deriving (Show)
 
 -- A log is made out of an optional header string and data specifiers in
 -- the header, and a list of records.
 data Log = Log { logHeaderTxt :: Text
-               , logHeaderRecord :: Record
+               , logHeaderTags :: [Tag]
                , logRecords :: [Record]
                }
                deriving (Show)
 
+-- Parse a simple tag like EOH or EOR, the ones without any data (and length,
+-- and type).
+expectTag :: Text -> Parser ()
+expectTag tagName = do
+    char '<'
+    asciiCI tagName
+    char '>'
+    takeWhile $ (/=) '<'
+    return ()
+
+-- Parse the data type of a tag.
+parseTagType :: Parser (Maybe Text)
+parseTagType = do
+    next <- peekChar
+    case next of
+        Nothing   -> fail "Unexpected end of data-specifier"
+        Just ':'  -> fmap Just $ takeWhile $ (/=) '>'
+        Just '>'  -> return Nothing
+        Just c -> fail "Unexpected character" -- TODO: emit c in the error message
+
+-- Parse a data specifier having a dedicated constructor, therefore known
+-- data structure. Only the tag data is returned
+expectDataSpecifier :: Text -> Parser Text
+expectDataSpecifier tagName = do
+    char '<'
+    asciiCI tagName
+    char ':'
+    length <- decimal
+    parseTagType
+    char '>'
+    tagData <- take length
+    takeWhile $ (/=) '<'
+    return tagData
+
+-- Parse an unknown data specifier, the ones that carry opaque data.
+parseDataSpecifier :: Parser Tag
+parseDataSpecifier = do
+    char '<'
+    tagName <- takeWhile $ (/=) ':'
+    char ':'
+    length <- decimal
+    mbType <- parseTagType
+    char '>'
+    tagData <- take length
+    takeWhile $ (/=) '<'
+    return $ DataSpecifier tagName mbType tagData
+
 parseTag :: Parser Tag
 parseTag = do
-        (asciiCI "<EOH>" >> (takeWhile $ (/=) '<') >> return EOH)
-    <|> (asciiCI "<EOR>" >> (takeWhile $ (/=) '<') >> return EOR)
-    <|> do
-        char '<'
-        name <- takeWhile $ (/=) ':'
-        char ':'
-        length <- decimal
+        (expectTag "EOH" >> return EOH)
+    <|> (expectTag "EOR" >> return EOR)
+    <|> (expectDataSpecifier "CALL"     >>= \tagData -> return $ CALL     tagData)
+    <|> (expectDataSpecifier "QSO_DATE" >>= \tagData -> return $ QSO_DATE tagData)
+    <|> (expectDataSpecifier "TIME_ON"  >>= \tagData -> return $ TIME_ON  tagData)
+    <|> parseDataSpecifier
 
-        next <- peekChar
-
-        mbType <- case next of
-            Nothing   -> fail "Unexpected end of data-specifier"
-            Just ':'  -> fmap Just $ takeWhile $ (/=) '>'
-            Just '>'  -> return Nothing
-            Just c -> fail "Unexpected character" -- TODO: emit c in the error message
-
-        char '>'
-        dsdata <- take length
-        extra <- takeWhile $ (/=) '<'
-
-        return $ DataSpecifier name length mbType dsdata extra
+-- Put a tag into a record.
+-- If a tag is a call, qso_date or time_on, update the appropriate fields
+-- If it's something else, put the tag into the record's tag list
+updateRecord :: Tag -> Record -> Record
+updateRecord t@(CALL _)     (Record _    qsoDate timeOn ts) = Record (Just t) qsoDate  timeOn   ts
+updateRecord t@(QSO_DATE _) (Record call _       timeOn ts) = Record call     (Just t) timeOn   ts
+updateRecord t@(TIME_ON _)  (Record call qsoDate _      ts) = Record call     qsoDate  (Just t) ts
+updateRecord t (Record call qsoDate timeOn ts)              = Record call qsoDate timeOn (t : ts)
 
 records :: [Tag] -> [Record]
+--records ts = foldl' (\ acc x -> f x acc) [] ts
 records ts = Prelude.foldr f [] ts
     where
         f :: Tag -> [Record] -> [Record]
-        f EOR rs             = Record [] : rs
-        f t []               = [Record [t]]
-        f t (Record ts : rs) = Record (t : ts) : rs
+        f EOR rs = Record Nothing Nothing Nothing [] : rs
+        f t []   = [updateRecord t $ Record Nothing Nothing Nothing []]
+        f t (r : rs) = updateRecord t r : rs
 
 parseLog :: Parser Log
 parseLog = do
@@ -118,7 +168,7 @@ parseLog = do
         (headerTags, bodyTags) = break ((==) EOH) dataSpecifiers
         bodyRecords = records $ tail bodyTags
 
-    return $ Log headerTxt (Record headerTags) bodyRecords
+    return $ Log headerTxt headerTags bodyRecords
 
 testParser :: Text -> Either String Log
 testParser = parseOnly parseLog
