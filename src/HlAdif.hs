@@ -5,9 +5,9 @@ module HlAdif
     ) where
 
 import Data.Attoparsec.Text
-import Data.List (foldl', intercalate)
+import Data.List (intercalate)
 import Data.Maybe
-import Data.Text hiding (take, takeWhile, break, tail, foldl', intercalate)
+import Data.Text hiding (take, takeWhile, break, tail, intercalate)
 import Prelude hiding (take, takeWhile)
 import Control.Applicative
 
@@ -172,7 +172,6 @@ updateRecord t (Record call qsoDate timeOn ts)              = Record call qsoDat
 -- Use the above updateRecord function to make sure call, qso_date and time_on
 -- get into their proper places in each record
 records :: [Tag] -> [Record]
---records ts = foldl' (\ acc x -> f x acc) [] ts
 records ts = Prelude.foldr f [] ts
     where
         f :: Tag -> [Record] -> [Record]

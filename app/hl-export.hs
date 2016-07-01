@@ -5,9 +5,9 @@ import Data.Text.IO hiding (putStrLn)
 import HlAdif
 import HlOptions
 import Options.Applicative
-import Prelude hiding (readFile)
+import Prelude hiding (readFile, putStr)
 import System.Environment
-import System.IO hiding (readFile)
+import System.IO hiding (readFile, putStr)
 
 data Options = Options
   { basedir :: String
@@ -28,11 +28,15 @@ getOptionsParserInfo = do
       )
 
 doExport :: Options -> IO ()
-doExport dbo = do
-    parseResult <- adifLogParser <$> readFile (basedir dbo ++ "/data/hl.adi")
-    case parseResult of
-        Left errorMsg -> putStrLn errorMsg
-        Right log     -> putStrLn $ show log
+doExport opt = do
+    db <- readFile (basedir opt ++ "/data/hl.adi")
+    case outputFormat opt of
+        LIST -> do
+            let parseResult = adifLogParser db
+            case parseResult of
+                Left errorMsg -> putStrLn errorMsg
+                Right log     -> putStrLn $ show log
+        ADIF -> putStr db
 
 main :: IO ()
 main = do
