@@ -1,17 +1,28 @@
 module Main where
 
+import HlAdif
 import HlOptions
 import Options.Applicative
+import System.Environment
+import Data.List
 
 data Options = Options
-  { fields :: [String]
+  { fields :: [Tag]
   }
+
+getDefaultTags :: IO [Tag]
+getDefaultTags = do
+    env <- filter (isPrefixOf "HL_T_" . fst) <$> getEnvironment
+    print env
+    return []
+    
 
 getOptionsParserInfo :: IO (ParserInfo Options)
 getOptionsParserInfo = do
+    defaultTags <- getDefaultTags
     return $ info (helper <*> (
         Options
-            <$> adifOptions
+            <$> adifRecordArguments defaultTags
       )) (
         fullDesc
             <> progDesc "Create an ADIF record"

@@ -1,13 +1,17 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings,FlexibleInstances #-}
 
 module HlAdif
     ( adifLogParser
+    , Tag (..)
+    , Record (..)
+    , ToTag (..)
+    , FromTag (..)
     ) where
 
 import Data.Attoparsec.Text
 import Data.List (intercalate)
 import Data.Maybe
-import Data.Text hiding (take, takeWhile, break, tail, intercalate)
+import Data.Text hiding (take, takeWhile, break, tail, intercalate, map, filter)
 import Prelude hiding (take, takeWhile)
 import Control.Applicative
 
@@ -56,7 +60,7 @@ import Control.Applicative
 
 
 -- A Tag is the ADIF representation of piece of data or metadata,
--- e.g. a field of a record (DataSpecifier), or the end of header / end
+-- e.g. a field of a record (Other), or the end of header / end
 -- of record marks.
 --
 -- <TAGNAME:4>data some extra data including the space after "data"
@@ -64,22 +68,48 @@ import Control.Applicative
 data Tag = CALL Text
          | QSO_DATE Text
          | TIME_ON Text
-         | DataSpecifier { dsName   :: Text
-                         , dsType   :: Maybe Text
-                         , dsData   :: Text
-                         }
+         | Other { dsName   :: Text
+                 , dsData   :: Maybe Text
+                 }
          | EOH
          | EOR
          deriving (Eq, Ord, Show)
 
-maybeShowTagData :: Tag -> Maybe String
-maybeShowTagData (CALL d)              = Just $ unpack d
-maybeShowTagData (QSO_DATE d)          = Just $ unpack d
-maybeShowTagData (TIME_ON d)           = Just $ unpack d
-maybeShowTagData (DataSpecifier _ _ d) = Just $ unpack d
-maybeShowTagData _ = Nothing
+class ToTag a where
+    toTag :: a -> Tag
 
--- A record is just a list of data specifiers
+class FromTag a where
+    fromTag :: Tag -> a
+
+instance ToTag (Text, Maybe Text) where
+    toTag (n, d) = case toUpper n of
+        "CALL"     -> CALL $ fromMaybe "" d
+        "QSO_DATE" -> QSO_DATE $ fromMaybe "" d
+        "TIME_ON"  -> TIME_ON $ fromMaybe "" d
+        "EOH"      -> EOH
+        "EOR"      -> EOR
+        otherwise  -> Other n d
+
+instance ToTag (String, Maybe String) where
+    toTag (n, v) = toTag (pack n, pack <$> v)
+
+instance FromTag (Text, Maybe Text) where
+    fromTag EOH = ("EOH", Nothing)
+    fromTag EOR = ("EOR", Nothing)
+    fromTag (CALL     x) = ("CALL",     Just x)
+    fromTag (QSO_DATE x) = ("QSO_DATE", Just x)
+    fromTag (TIME_ON  x) = ("TIME_ON",  Just x)
+    fromTag (Other n d) = (n, d)
+
+instance FromTag (String, Maybe String) where
+    fromTag tag = (unpack (fst tup), unpack <$> (snd tup))
+        where
+            tup = fromTag tag
+
+maybeShowTagData :: Tag -> Maybe String
+maybeShowTagData = snd . (fromTag :: Tag -> (String, Maybe String))
+
+-- A record is just a list of tags
 data Record = Record { recCall    :: Maybe Tag
                      , recQsoDate :: Maybe Tag
                      , recTimeOn  :: Maybe Tag
@@ -88,9 +118,9 @@ data Record = Record { recCall    :: Maybe Tag
 
 instance Show Record where
     show (Record call date timeOn tags) =
-        (fromMaybe "UNKNOWN CALL" $ call   >>= maybeShowTagData) ++
-        "\t"       ++ (fromMaybe "UNKNOWN DATE" $ date   >>= maybeShowTagData) ++
-        " "          ++ (fromMaybe "UNKNOWN TIME" $ timeOn >>= maybeShowTagData)
+        (fromMaybe "------" $ date >>= maybeShowTagData) ++ " " ++
+        (fromMaybe "----" $ timeOn >>= maybeShowTagData) ++ " " ++
+        (fromMaybe "------" $ call >>= maybeShowTagData)
 
 -- A log is made out of an optional header string and data specifiers in
 -- the header, and a list of records.
@@ -100,63 +130,31 @@ data Log = Log { logHeaderTxt :: Text
                }
 
 instance Show Log where
-    show (Log _ _ recs) = intercalate "\n" (Prelude.map show recs)
+    show (Log htxt tags recs) = unpack htxt ++ "\n" ++ intercalate "\n" (Prelude.map show tags) ++ intercalate "\n" (Prelude.map show recs)
 
--- Parse a simple tag like EOH or EOR, the ones without any data (and length,
--- and type).
-expectTag :: Text -> Parser ()
-expectTag tagName = do
-    char '<'
-    asciiCI tagName
-    char '>'
-    takeWhile $ (/=) '<'
-    return ()
-
--- Parse the data type of a tag.
-parseTagType :: Parser (Maybe Text)
-parseTagType = do
-    next <- peekChar
-    case next of
-        Nothing   -> fail "Unexpected end of data-specifier"
-        Just ':'  -> fmap Just $ takeWhile $ (/=) '>'
-        Just '>'  -> return Nothing
-        Just c -> fail "Unexpected character" -- TODO: emit c in the error message
-
--- Parse a data specifier having a dedicated constructor, therefore known
--- data structure. Only the tag data is returned
-expectDataSpecifier :: Text -> Parser Text
-expectDataSpecifier tagName = do
-    char '<'
-    asciiCI tagName
-    char ':'
-    length <- decimal
-    parseTagType
-    char '>'
-    tagData <- take length
-    takeWhile $ (/=) '<'
-    return tagData
-
--- Parse an unknown data specifier, the ones that carry opaque data.
-parseDataSpecifier :: Parser Tag
-parseDataSpecifier = do
-    char '<'
-    tagName <- takeWhile $ (/=) ':'
-    char ':'
-    length <- decimal
-    mbType <- parseTagType
-    char '>'
-    tagData <- take length
-    takeWhile $ (/=) '<'
-    return $ DataSpecifier tagName mbType tagData
-
-parseTag :: Parser Tag
+parseTag :: Parser (Text, Maybe Text)
 parseTag = do
-        (expectTag "EOH" >> return EOH)
-    <|> (expectTag "EOR" >> return EOR)
-    <|> (expectDataSpecifier "CALL"     >>= \tagData -> return $ CALL     tagData)
-    <|> (expectDataSpecifier "QSO_DATE" >>= \tagData -> return $ QSO_DATE tagData)
-    <|> (expectDataSpecifier "TIME_ON"  >>= \tagData -> return $ TIME_ON  tagData)
-    <|> parseDataSpecifier
+    char '<'
+    tagName <- takeWhile (\x -> x /= ':' && x /= '>')
+    n1 <- peekChar
+    tagData <- case n1 of
+        Nothing  -> fail "Unexpected end of tag"
+        Just ':' -> do
+            take 1
+            length <- decimal
+            n2 <- peekChar
+            case n2 of
+                Nothing  -> fail "Uexpected end of tag"
+                Just ':' -> takeWhile (/='>') -- Drop data type informatin
+                Just '>' -> return ""
+                Just c   -> fail $ "Unexpected character: " ++ [c]
+            take 1
+            Just <$> take length
+        Just '>' -> do
+            take 1
+            return Nothing
+    takeWhile (/='<')
+    return (tagName, tagData)
 
 -- Put a tag into a record.
 -- If a tag is a call, qso_date or time_on, update the appropriate fields
@@ -179,15 +177,25 @@ records ts = Prelude.foldr f [] ts
         f t []   = [updateRecord t $ Record Nothing Nothing Nothing []]
         f t (r : rs) = updateRecord t r : rs
 
+parseLogTuples :: Parser [(Text, Maybe Text)]
+parseLogTuples = do
+    headerTxt <- takeWhile $ (/=) '<'
+    many parseTag
+
 parseLog :: Parser Log
 parseLog = do
     headerTxt <- takeWhile $ (/=) '<'
-    dataSpecifiers <- many parseTag
+    tuples <- many parseTag
     let
-        (headerTags, bodyTags) = break ((==) EOH) dataSpecifiers
-        bodyRecords = records $ tail bodyTags
+        tags = map toTag tuples
+        (headerTags, bodyTags) = break ((==) EOH) tags
+        bodyRecords = records $ filter (/= EOH) bodyTags
 
     return $ Log headerTxt headerTags bodyRecords
 
 adifLogParser :: Text -> Either String Log
 adifLogParser = parseOnly parseLog
+
+printTuples :: Text ->IO ()
+printTuples log = do
+    print $ parseOnly parseLogTuples log
