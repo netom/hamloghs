@@ -2,6 +2,7 @@
 
 module HlAdif
     ( adifLogParser
+    , mergeTags
     , Tag (..)
     , Record (..)
     , ToTag (..)
@@ -68,8 +69,8 @@ import Control.Applicative
 data Tag = CALL Text
          | QSO_DATE Text
          | TIME_ON Text
-         | Other { dsName   :: Text
-                 , dsData   :: Maybe Text
+         | Other { tagName   :: Text
+                 , tagData   :: Maybe Text
                  }
          | EOH
          | EOR
@@ -196,6 +197,6 @@ parseLog = do
 adifLogParser :: Text -> Either String Log
 adifLogParser = parseOnly parseLog
 
-printTuples :: Text ->IO ()
-printTuples log = do
-    print $ parseOnly parseLogTuples log
+mergeTags :: [Tag] -> [Tag] -> [Tag]
+--mergeTags tags1 tags2 = filter (\x -> any (\y -> (fromTag y :: Maybe Text) == (fromTag x :: Maybe Text)) tags2) tags1 ++ tags2
+mergeTags tags1 tags2 = tags1 ++ tags2

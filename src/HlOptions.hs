@@ -6,7 +6,7 @@ module HlOptions
     ) where
 
 import Data.Maybe
-import Data.Text hiding (break, tail)
+import Data.Text hiding (break, tail, drop)
 import HlAdif
 import Options.Applicative
 import System.Directory
@@ -16,14 +16,14 @@ data OutputFormat = ADIF | LIST deriving (Read)
 
 parseAdifRecord :: Monad m => String -> m Tag
 parseAdifRecord s = do
-    if '=' `elem` s then
-        return $ toTag (s, Nothing :: Maybe String)
-    else do
+    if '=' `elem` s then do
         let t = break (== '=') s
-        return $ toTag $ (fst t, Just $ snd t)
+        return $ toTag $ (fst t, Just $ drop 1 $ snd t)
+    else return $ toTag (s, Nothing :: Maybe String)
 
 adifRecordArguments :: [Tag] -> Parser [Tag]
-adifRecordArguments _ = some (argument (str >>= parseAdifRecord) (metavar "FIELDS..."))
+adifRecordArguments defaultTags = do
+    mergeTags defaultTags <$> some (argument (str >>= parseAdifRecord) (metavar "FIELDS..."))
 
 getHomeOption :: IO (Parser String)
 getHomeOption = do

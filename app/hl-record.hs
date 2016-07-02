@@ -13,9 +13,8 @@ data Options = Options
 getDefaultTags :: IO [Tag]
 getDefaultTags = do
     env <- filter (isPrefixOf "HL_T_" . fst) <$> getEnvironment
-    print env
+    print $ map (\(k,v)->toTag (drop 5 k, Just v)) env
     return []
-    
 
 getOptionsParserInfo :: IO (ParserInfo Options)
 getOptionsParserInfo = do
