@@ -5,6 +5,8 @@ module HlAdif
     , mergeTags
     , record
     , records
+    , writeTag
+    , writeRecord
     , Tag (..)
     , Record (..)
     , ToTag (..)
@@ -14,7 +16,8 @@ module HlAdif
 import Data.Attoparsec.Text
 import Data.List (intercalate)
 import Data.Maybe
-import Data.Text hiding (take, takeWhile, break, tail, intercalate, map, filter, foldr)
+import Data.Monoid
+import Data.Text hiding (take, takeWhile, break, tail, intercalate, map, filter, foldr, length, concat)
 import Prelude hiding (take, takeWhile)
 import Control.Applicative
 
@@ -56,11 +59,6 @@ import Control.Applicative
 --
 -- * OpenOffice / LibreOffice XML
 --     * Needs a template odf archive
-
-
-
-
-
 
 -- A Tag is the ADIF representation of piece of data or metadata,
 -- e.g. a field of a record (Other), or the end of header / end
@@ -203,8 +201,22 @@ adifLogParser :: Text -> Either String Log
 adifLogParser = parseOnly parseLog
 
 mergeTags :: [Tag] -> [Tag] -> [Tag]
---mergeTags tags1 tags2 = filter (\x -> any (\y -> (fromTag y :: Maybe Text) == (fromTag x :: Maybe Text)) tags2) tags1 ++ tags2
-mergeTags tags1 tags2 = tags1 ++ tags2
-    --where
-    --    tagPresent :: Tag -> [Tag] -> Bool
-    --    tagPresent t ts =
+mergeTags tags1 tags2 = filter (not . tagPresent tags2) tags1 ++ tags2
+    where
+        tagPresent :: [Tag] -> Tag -> Bool
+        tagPresent ts t = elem tn tns
+            where
+                tn  = fst $ (fromTag t :: (String, Maybe String))
+                tns = map (fst . (fromTag :: Tag -> (String, Maybe String))) ts
+
+writeTag :: Tag -> String
+writeTag t = case fromTag t of
+    (tn, Nothing) -> "<" ++ tn ++ ">"
+    (tn, Just td) -> "<" ++ tn ++ ":" ++ (show $ length td) ++ ">" ++ td
+
+writeRecord :: Record -> String
+writeRecord (Record call qsoDate timeOn tags) = concat (map mbTag2Str (call : qsoDate : timeOn : map Just tags)) ++ "<EOR>\n"
+    where
+        --mbTag2Str t :: Maybe Tag -> String
+        mbTag2Str Nothing  = ""
+        mbTag2Str (Just t) = "  " ++ writeTag t ++ "\n"

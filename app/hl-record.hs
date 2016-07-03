@@ -12,14 +12,13 @@ import GHC.Int
 import Data.Text hiding (filter, isPrefixOf, map, drop)
 
 data Options = Options
-  { fields :: [Tag]
+  { tags :: [Tag]
   }
 
 getEnvTags :: IO [Tag]
 getEnvTags = do
     env <- filter (isPrefixOf "HL_T_" . fst) <$> getEnvironment
-    print $ map (\(k,v)->toTag (drop 5 k, Just v)) env
-    return []
+    return $ map (\(k,v)->toTag (drop 5 k, Just v)) env
 
 getCalculatedTags :: IO [Tag]
 getCalculatedTags = do
@@ -50,8 +49,8 @@ getOptionsParserInfo = do
 
 doRecord :: Options -> IO ()
 doRecord opt = do
-    let fs = fields opt
-    print $ record fs
+    let fs = tags opt
+    putStr $ writeRecord $ record fs
 
 main :: IO ()
 main = do
