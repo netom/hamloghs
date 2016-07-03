@@ -217,6 +217,6 @@ writeTag t = case fromTag t of
 writeRecord :: Record -> String
 writeRecord (Record call qsoDate timeOn tags) = concat (map mbTag2Str (call : qsoDate : timeOn : map Just tags)) ++ "<EOR>\n"
     where
-        --mbTag2Str t :: Maybe Tag -> String
+        mbTag2Str :: Maybe Tag -> String
         mbTag2Str Nothing  = ""
         mbTag2Str (Just t) = "  " ++ writeTag t ++ "\n"
