@@ -20,6 +20,7 @@ import Data.Monoid
 import Data.Text hiding (take, takeWhile, break, tail, intercalate, map, filter, foldr, length, concat)
 import Prelude hiding (take, takeWhile)
 import Control.Applicative
+import qualified Data.Char
 
 -- Optparse-applicative for argument / option parsing
 -- 
@@ -211,8 +212,8 @@ mergeTags tags1 tags2 = filter (not . tagPresent tags2) tags1 ++ tags2
 
 writeTag :: Tag -> String
 writeTag t = case fromTag t of
-    (tn, Nothing) -> "<" ++ tn ++ ">"
-    (tn, Just td) -> "<" ++ tn ++ ":" ++ (show $ length td) ++ ">" ++ td
+    (tn, Nothing) -> "<" ++ map Data.Char.toUpper tn ++ ">"
+    (tn, Just td) -> "<" ++ map Data.Char.toUpper tn ++ ":" ++ (show $ length td) ++ ">" ++ td
 
 writeRecord :: Record -> String
 writeRecord (Record call qsoDate timeOn tags) = concat (map mbTag2Str (call : qsoDate : timeOn : map Just tags)) ++ "<EOR>\n"
