@@ -50,6 +50,8 @@ executable hl-record
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
+                     , time
+                     , text
   default-language:    Haskell2010
 
 test-suite hamloghs-test

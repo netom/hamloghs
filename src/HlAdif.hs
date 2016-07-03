@@ -3,6 +3,8 @@
 module HlAdif
     ( adifLogParser
     , mergeTags
+    , record
+    , records
     , Tag (..)
     , Record (..)
     , ToTag (..)
@@ -12,7 +14,7 @@ module HlAdif
 import Data.Attoparsec.Text
 import Data.List (intercalate)
 import Data.Maybe
-import Data.Text hiding (take, takeWhile, break, tail, intercalate, map, filter)
+import Data.Text hiding (take, takeWhile, break, tail, intercalate, map, filter, foldr)
 import Prelude hiding (take, takeWhile)
 import Control.Applicative
 
@@ -166,12 +168,15 @@ updateRecord t@(QSO_DATE _) (Record call _       timeOn ts) = Record call     (J
 updateRecord t@(TIME_ON _)  (Record call qsoDate _      ts) = Record call     qsoDate  (Just t) ts
 updateRecord t (Record call qsoDate timeOn ts)              = Record call qsoDate timeOn (t : ts)
 
+record :: [Tag] -> Record
+record ts = foldr updateRecord (Record Nothing Nothing Nothing []) ts
+
 -- Break up a list of tags parsed from the body of an ADIF file to
 -- a neat list of records.
 -- Use the above updateRecord function to make sure call, qso_date and time_on
 -- get into their proper places in each record
 records :: [Tag] -> [Record]
-records ts = Prelude.foldr f [] ts
+records ts = foldr f [] ts
     where
         f :: Tag -> [Record] -> [Record]
         f EOR rs = Record Nothing Nothing Nothing [] : rs
@@ -200,3 +205,6 @@ adifLogParser = parseOnly parseLog
 mergeTags :: [Tag] -> [Tag] -> [Tag]
 --mergeTags tags1 tags2 = filter (\x -> any (\y -> (fromTag y :: Maybe Text) == (fromTag x :: Maybe Text)) tags2) tags1 ++ tags2
 mergeTags tags1 tags2 = tags1 ++ tags2
+    --where
+    --    tagPresent :: Tag -> [Tag] -> Bool
+    --    tagPresent t ts =
