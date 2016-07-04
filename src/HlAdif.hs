@@ -223,5 +223,6 @@ writeLog :: Log -> Text
 writeLog (Log htxt htags recs) =
     concat [ htxt
            , intercalate "\n" $ map writeTag htags
+           , "<EOH>\n"
            , concat $ map writeRecord recs
            ]
