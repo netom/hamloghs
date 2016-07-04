@@ -14,7 +14,6 @@ module HlAdif
     ) where
 
 import Data.Attoparsec.Text
---import Data.List (intercalate)
 import Data.Maybe
 import Data.Monoid
 import Data.Text hiding (take, takeWhile, break, tail, map, filter, foldr)
