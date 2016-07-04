@@ -7,10 +7,11 @@ module HlAdif
     , records
     , writeTag
     , writeRecord
+    , writeLog
+    , toTag
+    , fromTag
     , Tag (..)
     , Record (..)
-    , ToTag (..)
-    , FromTag (..)
     ) where
 
 import Control.Applicative
@@ -78,39 +79,25 @@ data Tag = QSO_DATE Text
          | EOR
          deriving (Eq, Ord)
 
-class ToTag a where
-    toTag :: a -> Tag
+toTag :: (Text, Maybe Text) -> Tag
+toTag (n, d) = case toUpper n of
+    "CALL"     -> CALL $ fromMaybe "" d
+    "QSO_DATE" -> QSO_DATE $ fromMaybe "" d
+    "TIME_ON"  -> TIME_ON $ fromMaybe "" d
+    "EOH"      -> EOH
+    "EOR"      -> EOR
+    otherwise  -> Other n d
 
-class FromTag a where
-    fromTag :: Tag -> a
-
-instance ToTag (Text, Maybe Text) where
-    toTag (n, d) = case toUpper n of
-        "CALL"     -> CALL $ fromMaybe "" d
-        "QSO_DATE" -> QSO_DATE $ fromMaybe "" d
-        "TIME_ON"  -> TIME_ON $ fromMaybe "" d
-        "EOH"      -> EOH
-        "EOR"      -> EOR
-        otherwise  -> Other n d
-
-instance ToTag (String, Maybe String) where
-    toTag (n, v) = toTag (pack n, pack <$> v)
-
-instance FromTag (Text, Maybe Text) where
-    fromTag EOH = ("EOH", Nothing)
-    fromTag EOR = ("EOR", Nothing)
-    fromTag (CALL     x) = ("CALL",     Just x)
-    fromTag (QSO_DATE x) = ("QSO_DATE", Just x)
-    fromTag (TIME_ON  x) = ("TIME_ON",  Just x)
-    fromTag (Other n d) = (n, d)
-
-instance FromTag (String, Maybe String) where
-    fromTag tag = (unpack (fst tup), unpack <$> (snd tup))
-        where
-            tup = fromTag tag
+fromTag :: Tag -> (Text, Maybe Text)
+fromTag EOH = ("EOH", Nothing)
+fromTag EOR = ("EOR", Nothing)
+fromTag (CALL     x) = ("CALL",     Just x)
+fromTag (QSO_DATE x) = ("QSO_DATE", Just x)
+fromTag (TIME_ON  x) = ("TIME_ON",  Just x)
+fromTag (Other n d) = (n, d)
 
 maybeShowTagData :: Tag -> Maybe Text
-maybeShowTagData = snd . (fromTag :: Tag -> (Text, Maybe Text))
+maybeShowTagData = snd . fromTag
 
 showTag :: Tag -> Text
 showTag t = case tagData of
@@ -217,8 +204,8 @@ mergeTags tags1 tags2 = filter (not . tagPresent tags2) tags1 ++ tags2
         tagPresent :: [Tag] -> Tag -> Bool
         tagPresent ts t = elem tn tns
             where
-                tn  = fst $ (fromTag t :: (Text, Maybe Text))
-                tns = map (fst . (fromTag :: Tag -> (Text, Maybe Text))) ts
+                tn  = fst $ fromTag t
+                tns = map (fst . fromTag) ts
 
 writeTag :: Tag -> Text
 writeTag t = case fromTag t of
@@ -231,3 +218,10 @@ writeRecord (Record call qsoDate timeOn tags) = concat $ map mbTag2Str (qsoDate 
         mbTag2Str :: Maybe Tag -> Text
         mbTag2Str Nothing  = ""
         mbTag2Str (Just t) = concat ["  ", writeTag t, "\n"]
+
+writeLog :: Log -> Text
+writeLog (Log htxt htags recs) =
+    concat [ htxt
+           , intercalate "\n" $ map writeTag htags
+           , concat $ map writeRecord recs
+           ]

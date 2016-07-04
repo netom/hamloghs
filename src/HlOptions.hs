@@ -18,8 +18,8 @@ parseAdifRecord :: Monad m => String -> m Tag
 parseAdifRecord s = do
     if '=' `elem` s then do
         let t = break (== '=') s
-        return $ toTag $ (fst t, Just $ drop 1 $ snd t)
-    else return $ toTag (s, Nothing :: Maybe String)
+        return $ toTag $ (pack $ fst t, Just $ pack $ drop 1 $ snd t)
+    else return $ toTag (pack s, Nothing)
 
 adifRecordArguments :: [Tag] -> Parser [Tag]
 adifRecordArguments defaultTags = do
@@ -35,7 +35,6 @@ getHomeOption = do
      <> metavar "HL_HOME"
      <> help "The root directory of the application data, i.e. where your log is stored."
 
---outputFormatOption :: Parser OutputFormat
 outputFormatOption = option auto
     $ long "output-format"
    <> short 'o'

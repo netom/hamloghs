@@ -18,7 +18,7 @@ data Options = Options
 getEnvTags :: IO [Tag]
 getEnvTags = do
     env <- filter (isPrefixOf "HL_T_" . fst) <$> getEnvironment
-    return $ map (\(k,v)->toTag (drop 5 k, Just v)) env
+    return $ map (\(k,v)->toTag (pack $ drop 5 k, Just $ pack v)) env
 
 getCalculatedTags :: IO [Tag]
 getCalculatedTags = do
