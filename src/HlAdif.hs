@@ -14,13 +14,14 @@ module HlAdif
     ) where
 
 import Data.Attoparsec.Text
-import Data.List (intercalate)
+--import Data.List (intercalate)
 import Data.Maybe
 import Data.Monoid
-import Data.Text hiding (take, takeWhile, break, tail, intercalate, map, filter, foldr, length, concat)
-import Prelude hiding (take, takeWhile)
+import Data.Text hiding (take, takeWhile, break, tail, map, filter, foldr)
+import Prelude hiding (take, takeWhile, concat)
 import Control.Applicative
 import qualified Data.Char
+import Data.String
 
 -- Optparse-applicative for argument / option parsing
 -- 
@@ -75,7 +76,7 @@ data Tag = CALL Text
                  }
          | EOH
          | EOR
-         deriving (Eq, Ord, Show)
+         deriving (Eq, Ord)
 
 class ToTag a where
     toTag :: a -> Tag
@@ -108,8 +109,18 @@ instance FromTag (String, Maybe String) where
         where
             tup = fromTag tag
 
-maybeShowTagData :: Tag -> Maybe String
-maybeShowTagData = snd . (fromTag :: Tag -> (String, Maybe String))
+maybeShowTagData :: Tag -> Maybe Text
+maybeShowTagData = snd . (fromTag :: Tag -> (Text, Maybe Text))
+
+showTag :: Tag -> Text
+showTag t = case tagData of
+    Just d  -> concat [tagName, "=", d]
+    Nothing -> tagName
+    where
+        (tagName, tagData) = fromTag t
+
+instance Show Tag where
+    show = unpack . showTag
 
 -- A record is just a list of tags
 data Record = Record { recCall    :: Maybe Tag
@@ -118,11 +129,14 @@ data Record = Record { recCall    :: Maybe Tag
                      , recTags    :: [Tag]
                      }
 
+showRecord :: Record -> Text
+showRecord (Record call date timeOn tags) = concat [
+        (fromMaybe "------" $ date >>= maybeShowTagData), " ",
+        (fromMaybe "----" $ timeOn >>= maybeShowTagData), " ",
+        (fromMaybe "------" $ call >>= maybeShowTagData)]
+
 instance Show Record where
-    show (Record call date timeOn tags) =
-        (fromMaybe "------" $ date >>= maybeShowTagData) ++ " " ++
-        (fromMaybe "----" $ timeOn >>= maybeShowTagData) ++ " " ++
-        (fromMaybe "------" $ call >>= maybeShowTagData)
+    show = unpack . showRecord
 
 -- A log is made out of an optional header string and data specifiers in
 -- the header, and a list of records.
@@ -131,8 +145,11 @@ data Log = Log { logHeaderTxt :: Text
                , logRecords :: [Record]
                }
 
+showLog :: Log -> Text
+showLog (Log htxt tags recs) =  concat [htxt, "\n", intercalate "\n" (Prelude.map showTag tags), intercalate "\n" (Prelude.map showRecord recs)]
+
 instance Show Log where
-    show (Log htxt tags recs) = unpack htxt ++ "\n" ++ intercalate "\n" (Prelude.map show tags) ++ intercalate "\n" (Prelude.map show recs)
+    show = unpack . showLog
 
 parseTag :: Parser (Text, Maybe Text)
 parseTag = do
@@ -207,17 +224,17 @@ mergeTags tags1 tags2 = filter (not . tagPresent tags2) tags1 ++ tags2
         tagPresent :: [Tag] -> Tag -> Bool
         tagPresent ts t = elem tn tns
             where
-                tn  = fst $ (fromTag t :: (String, Maybe String))
-                tns = map (fst . (fromTag :: Tag -> (String, Maybe String))) ts
+                tn  = fst $ (fromTag t :: (Text, Maybe Text))
+                tns = map (fst . (fromTag :: Tag -> (Text, Maybe Text))) ts
 
-writeTag :: Tag -> String
+writeTag :: Tag -> Text
 writeTag t = case fromTag t of
-    (tn, Nothing) -> "<" ++ map Data.Char.toUpper tn ++ ">"
-    (tn, Just td) -> "<" ++ map Data.Char.toUpper tn ++ ":" ++ (show $ length td) ++ ">" ++ td
+    (tn, Nothing) -> concat ["<", toUpper tn, ">"]
+    (tn, Just td) -> concat ["<", toUpper tn, ":", (pack $ show $ Data.Text.length td), ">", td]
 
-writeRecord :: Record -> String
-writeRecord (Record call qsoDate timeOn tags) = concat (map mbTag2Str (call : qsoDate : timeOn : map Just tags)) ++ "<EOR>\n"
+writeRecord :: Record -> Text
+writeRecord (Record call qsoDate timeOn tags) = concat $ map mbTag2Str (call : qsoDate : timeOn : map Just tags) ++ ["<EOR>\n"]
     where
-        mbTag2Str :: Maybe Tag -> String
+        mbTag2Str :: Maybe Tag -> Text
         mbTag2Str Nothing  = ""
-        mbTag2Str (Just t) = "  " ++ writeTag t ++ "\n"
+        mbTag2Str (Just t) = concat ["  ", writeTag t, "\n"]

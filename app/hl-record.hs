@@ -50,7 +50,7 @@ getOptionsParserInfo = do
 doRecord :: Options -> IO ()
 doRecord opt = do
     let fs = tags opt
-    putStr $ writeRecord $ record fs
+    putStr $ unpack $ writeRecord $ record fs
 
 main :: IO ()
 main = do
