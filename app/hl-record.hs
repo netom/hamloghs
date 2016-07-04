@@ -34,14 +34,10 @@ getCalculatedTags = do
 
 getOptionsParserInfo :: IO (ParserInfo Options)
 getOptionsParserInfo = do
-    calcTags <- getCalculatedTags
-    envTags  <- getEnvTags
-
-    let defaultTags = mergeTags calcTags envTags
 
     return $ info (helper <*> (
         Options
-            <$> adifRecordArguments defaultTags
+            <$> adifRecordArguments
       )) (
         fullDesc
             <> progDesc "Create an ADIF record"
@@ -49,7 +45,11 @@ getOptionsParserInfo = do
 
 doRecord :: Options -> IO ()
 doRecord opt = do
-    let fs = tags opt
+    calcTags <- getCalculatedTags
+    envTags  <- getEnvTags
+
+    let fs = mergeTags [tags opt, envTags, calcTags]
+
     putStr $ unpack $ writeRecord $ record fs
 
 main :: IO ()

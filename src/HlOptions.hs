@@ -21,9 +21,8 @@ parseAdifRecord s = do
         return $ toTag $ (pack $ fst t, Just $ pack $ drop 1 $ snd t)
     else return $ toTag (pack s, Nothing)
 
-adifRecordArguments :: [Tag] -> Parser [Tag]
-adifRecordArguments defaultTags = do
-    mergeTags defaultTags <$> some (argument (str >>= parseAdifRecord) (metavar "FIELDS..."))
+adifRecordArguments :: Parser [Tag]
+adifRecordArguments = some (argument (str >>= parseAdifRecord) (metavar "FIELDS..."))
 
 getHomeOption :: IO (Parser String)
 getHomeOption = do
