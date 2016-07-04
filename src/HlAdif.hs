@@ -13,14 +13,15 @@ module HlAdif
     , FromTag (..)
     ) where
 
+import Control.Applicative
 import Data.Attoparsec.Text
+import Data.List (sort)
 import Data.Maybe
 import Data.Monoid
+import Data.String
 import Data.Text hiding (take, takeWhile, break, tail, map, filter, foldr)
 import Prelude hiding (take, takeWhile, concat)
-import Control.Applicative
-import qualified Data.Char
-import Data.String
+import qualified Data.List.Split as S
 
 -- Optparse-applicative for argument / option parsing
 -- 
@@ -67,9 +68,9 @@ import Data.String
 --
 -- <TAGNAME:4>data some extra data including the space after "data"
 --
-data Tag = CALL Text
-         | QSO_DATE Text
+data Tag = QSO_DATE Text
          | TIME_ON Text
+         | CALL Text
          | Other { tagName   :: Text
                  , tagData   :: Maybe Text
                  }
@@ -122,9 +123,9 @@ instance Show Tag where
     show = unpack . showTag
 
 -- A record is just a list of tags
-data Record = Record { recCall    :: Maybe Tag
-                     , recQsoDate :: Maybe Tag
+data Record = Record { recQsoDate :: Maybe Tag
                      , recTimeOn  :: Maybe Tag
+                     , recCall    :: Maybe Tag
                      , recTags    :: [Tag]
                      }
 
@@ -184,19 +185,12 @@ updateRecord t@(TIME_ON _)  (Record call qsoDate _      ts) = Record call     qs
 updateRecord t (Record call qsoDate timeOn ts)              = Record call qsoDate timeOn (t : ts)
 
 record :: [Tag] -> Record
-record ts = foldr updateRecord (Record Nothing Nothing Nothing []) ts
+record ts = foldr updateRecord (Record Nothing Nothing Nothing []) $ sort ts
 
 -- Break up a list of tags parsed from the body of an ADIF file to
--- a neat list of records.
--- Use the above updateRecord function to make sure call, qso_date and time_on
--- get into their proper places in each record
+-- a neat list of records. Empty records are dropped.
 records :: [Tag] -> [Record]
-records ts = foldr f [] ts
-    where
-        f :: Tag -> [Record] -> [Record]
-        f EOR rs = Record Nothing Nothing Nothing [] : rs
-        f t []   = [updateRecord t $ Record Nothing Nothing Nothing []]
-        f t (r : rs) = updateRecord t r : rs
+records ts = map record $ filter (/=[]) $ S.splitOn [EOR] ts
 
 parseLogTuples :: Parser [(Text, Maybe Text)]
 parseLogTuples = do
@@ -232,7 +226,7 @@ writeTag t = case fromTag t of
     (tn, Just td) -> concat ["<", toUpper tn, ":", (pack $ show $ Data.Text.length td), ">", td]
 
 writeRecord :: Record -> Text
-writeRecord (Record call qsoDate timeOn tags) = concat $ map mbTag2Str (call : qsoDate : timeOn : map Just tags) ++ ["<EOR>\n"]
+writeRecord (Record call qsoDate timeOn tags) = concat $ map mbTag2Str (qsoDate : timeOn : call : map Just tags) ++ ["<EOR>\n"]
     where
         mbTag2Str :: Maybe Tag -> Text
         mbTag2Str Nothing  = ""
