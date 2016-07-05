@@ -28,10 +28,11 @@ and XML.
 ## Planned tools
 
 * Creating records
-  * HL_MY_GRIDSQUARE=JN97mm hl-record --mode SSB -t now --rst-rcvd 59 --rst-sent 56 --call OM2ZJQ >> log.adi
+  * HL_T_MY_GRIDSQUARE=JN97mm hl-record --mode SSB --rst-rcvd 59 --rst-sent 56 --call OM2ZJQ >> log.adi
 * Merging / splitting logs stored in a directory tree, partitioned on date
   * cat log.adi | hl-import -d my_log_dir
   * hl-export -d my_log_dir --from-date=yesterday --to-date=now
+  * hl-merge to_import.adi my_other_log.adi > merged_log.adi
 * Read/write various formats
   * hl-read-adx, hd-write-adx
   * Excel XML
