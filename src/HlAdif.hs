@@ -12,17 +12,19 @@ module HlAdif
     , fromTag
     , tagName
     , tagData
+    , mergeLogs
     , Tag (..)
     , Record (..)
     ) where
 
 import Control.Applicative
 import Data.Attoparsec.Text
-import Data.List (concat, sortBy, groupBy)
+import qualified Data.List as L
 import Data.Maybe
 import Data.Monoid
 import Data.String
-import Data.Text hiding (take, takeWhile, break, tail, map, filter, foldr)
+import Data.Text hiding (take, takeWhile, break, tail, map, filter, foldr, head)
+import qualified Data.Text as T
 import Prelude hiding (take, takeWhile)
 import qualified Data.List.Split as S
 
@@ -77,7 +79,21 @@ data Tag = QSO_DATE Text
          | Other Text (Maybe Text)
          | EOH
          | EOR
-         deriving (Eq, Ord)
+
+-- Two tags are equal if their names are equal.
+-- Tags with the same name are rarely in the same
+-- list (traversable), and if they are, their data
+-- rarely matters. For exact comparison, see sameTags
+instance Eq Tag where
+    (==) t1 t2 = compare t1 t2 == EQ
+
+-- Ordering of tags done only by their name for the same
+-- reason as equality is defined as such.
+instance Ord Tag where
+    compare t1 t2 = compare (tagName t1) (tagName t2)
+
+instance Show Tag where
+    show = unpack . showTag
 
 toTag :: (Text, Maybe Text) -> Tag
 toTag (n, d) = case toUpper n of
@@ -102,34 +118,40 @@ tagName = fst . fromTag
 tagData :: Tag -> Maybe Text
 tagData = snd . fromTag
 
-maybeShowTagData :: Tag -> Maybe Text
-maybeShowTagData = snd . fromTag
-
 showTag :: Tag -> Text
 showTag t = case tagData of
-    Just d  -> Data.Text.concat [tagName, "=", d]
+    Just d  -> T.concat [tagName, "=", d]
     Nothing -> tagName
     where
         (tagName, tagData) = fromTag t
 
-instance Show Tag where
-    show = unpack . showTag
-
 -- A record is just a list of tags
-data Record = Record { recQsoDate :: Maybe Tag
-                     , recTimeOn  :: Maybe Tag
-                     , recCall    :: Maybe Tag
-                     , recTags    :: [Tag]
-                     } deriving (Eq, Ord)
+data Record = Record { recQsoDate   :: Maybe Tag
+                     , recTimeOn    :: Maybe Tag
+                     , recCall      :: Maybe Tag
+                     , recOtherTags :: [Tag]
+                     }
 
-showRecord :: Record -> Text
-showRecord (Record call date timeOn tags) = Data.Text.concat [
-        (fromMaybe "------" $ date >>= maybeShowTagData), " ",
-        (fromMaybe "----" $ timeOn >>= maybeShowTagData), " ",
-        (fromMaybe "------" $ call >>= maybeShowTagData)]
+instance Eq Record where
+    (==) r1 r2 = compare r1 r2 == EQ
+
+instance Ord Record where
+    compare (Record a1 b1 c1 _) (Record a2 b2 c2 _) = compare (a1, b2, c1) (a2, b2, c2)
 
 instance Show Record where
     show = unpack . showRecord
+
+recTags :: Record -> [Tag]
+recTags r = catMaybes [recQsoDate r, recTimeOn r, recCall r] ++ recOtherTags r
+
+showRecord :: Record -> Text
+showRecord (Record call date timeOn tags) = T.concat [
+    (fromMaybe "------" $ date >>= tagData), " ",
+    (fromMaybe "----" $ timeOn >>= tagData), " ",
+    (fromMaybe "------" $ call >>= tagData)]
+
+emptyRec :: Record
+emptyRec = Record Nothing Nothing Nothing []
 
 -- A log is made out of an optional header string and data specifiers in
 -- the header, and a list of records.
@@ -139,7 +161,7 @@ data Log = Log { logHeaderTxt :: Text
                }
 
 showLog :: Log -> Text
-showLog (Log htxt tags recs) =  Data.Text.concat [htxt, "\n", intercalate "\n" (Prelude.map showTag tags), intercalate "\n" (Prelude.map showRecord recs)]
+showLog (Log htxt tags recs) =  T.concat [htxt, "\n", intercalate "\n" (map showTag tags), intercalate "\n" (map showRecord recs)]
 
 instance Show Log where
     show = unpack . showLog
@@ -178,17 +200,12 @@ updateRecord t@(TIME_ON _)  (Record call qsoDate _      ts) = Record call     qs
 updateRecord t (Record call qsoDate timeOn ts)              = Record call qsoDate timeOn (t : ts)
 
 record :: [Tag] -> Record
-record ts = foldr updateRecord (Record Nothing Nothing Nothing []) $ sortBy cmpTags ts
+record = foldr updateRecord emptyRec . L.sort
 
 -- Break up a list of tags parsed from the body of an ADIF file to
 -- a neat list of records. Empty records are dropped.
 records :: [Tag] -> [Record]
 records ts = map record $ filter (/=[]) $ S.splitOn [EOR] ts
-
-parseLogTuples :: Parser [(Text, Maybe Text)]
-parseLogTuples = do
-    headerTxt <- takeWhile $ (/=) '<'
-    many parseTag
 
 parseLog :: Parser Log
 parseLog = do
@@ -204,38 +221,33 @@ parseLog = do
 adifLogParser :: Text -> Either String Log
 adifLogParser = parseOnly parseLog
 
-cmpTags :: Tag -> Tag -> Ordering
-cmpTags t1 t2 = compare (tagName t1) (tagName t2)
-
-tagsMatch :: Tag -> Tag -> Bool
-tagsMatch t1 t2 = cmpTags t1 t2 == EQ
-
-cmpRecords :: Record -> Record -> Ordering
-cmpRecords (Record a1 b1 c1 _) (Record a2 b2 c2 _) = compare (a1, b2, c1) (a2, b2, c2)
-
-recordsMatch :: Record -> Record -> Bool
-recordsMatch r1 r2 = cmpRecords r1 r2 == EQ
-
 -- Warning: uses incomplete function "head".
 mergeTags :: [[Tag]] -> [Tag]
-mergeTags = map Prelude.head . Data.List.groupBy tagsMatch . sortBy cmpTags . Data.List.concat
+mergeTags = map head . L.group . L.sort . L.concat
+
+mergeRecords :: [[Record]] -> [Record]
+mergeRecords = map (record . mergeTags . map recTags) . L.group . L.sort . L.concat
+
+-- TODO: currently there is no logic to handle header tags.
+mergeLogs :: [Log] -> Log
+mergeLogs = Log "" [] . mergeRecords . map logRecords
 
 writeTag :: Tag -> Text
 writeTag t = case fromTag t of
-    (tn, Nothing) -> Data.Text.concat ["<", toUpper tn, ">"]
-    (tn, Just td) -> Data.Text.concat ["<", toUpper tn, ":", (pack $ show $ Data.Text.length td), ">", td]
+    (tn, Nothing) -> T.concat ["<", toUpper tn, ">"]
+    (tn, Just td) -> T.concat ["<", toUpper tn, ":", (pack $ show $ Data.Text.length td), ">", td]
 
 writeRecord :: Record -> Text
-writeRecord (Record call qsoDate timeOn tags) = Data.Text.concat $ map mbTag2Str (qsoDate : timeOn : call : map Just tags) ++ ["<EOR>\n"]
+writeRecord (Record call qsoDate timeOn tags) = T.concat $ map mbTag2Str (qsoDate : timeOn : call : map Just tags) ++ ["<EOR>\n"]
     where
         mbTag2Str :: Maybe Tag -> Text
         mbTag2Str Nothing  = ""
-        mbTag2Str (Just t) = Data.Text.concat ["  ", writeTag t, "\n"]
+        mbTag2Str (Just t) = T.concat ["  ", writeTag t, "\n"]
 
 writeLog :: Log -> Text
 writeLog (Log htxt htags recs) =
-    Data.Text.concat [ htxt
-                     , intercalate "\n" $ map writeTag htags
-                     , "<EOH>\n"
-                     , Data.Text.concat $ map writeRecord $ sortBy cmpRecords recs
-                     ]
+    T.concat [ htxt
+             , intercalate "\n" $ map writeTag htags
+             , "<EOH>\n"
+             , Data.Text.concat $ map writeRecord $ L.sort recs
+             ]
