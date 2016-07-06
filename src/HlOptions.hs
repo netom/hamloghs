@@ -3,6 +3,7 @@ module HlOptions
     , outputFormatOption
     , OutputFormat (..)
     , adifRecordArguments
+    , inputFileArguments
     ) where
 
 import Data.Maybe
@@ -23,6 +24,9 @@ parseAdifRecord s = do
 
 adifRecordArguments :: Parser [Tag]
 adifRecordArguments = some (argument (str >>= parseAdifRecord) (metavar "FIELDS..."))
+
+inputFileArguments :: Parser [String]
+inputFileArguments = some (argument str (metavar "FILES..."))
 
 getHomeOption :: IO (Parser String)
 getHomeOption = do

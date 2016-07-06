@@ -15,6 +15,7 @@ module HlAdif
     , mergeLogs
     , Tag (..)
     , Record (..)
+    , Log
     ) where
 
 import Control.Applicative
