@@ -25,7 +25,8 @@ parseErrorHandler (Right log) = return log
 doMerge :: Options -> IO ()
 doMerge opt = do
     contentList <- mapM TIO.readFile $ files opt
-    (mergeLogs <$> mapM (parseErrorHandler . adifLogParser) contentList) >>= (putStr . show)
+    --logs <- mapM (parseErrorHandler . adifLogParser) contentList
+    --putStr $ show $ logs
     (writeLog <$> mergeLogs <$> mapM (parseErrorHandler . adifLogParser) contentList) >>= TIO.putStr
 
 main :: IO ()

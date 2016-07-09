@@ -80,18 +80,7 @@ data Tag = QSO_DATE Text
          | Other Text (Maybe Text)
          | EOH
          | EOR
-
--- Two tags are equal if their names are equal.
--- Tags with the same name are rarely in the same
--- list (traversable), and if they are, their data
--- rarely matters. For exact comparison, see sameTags
-instance Eq Tag where
-    (==) t1 t2 = compare t1 t2 == EQ
-
--- Ordering of tags done only by their name for the same
--- reason as equality is defined as such.
-instance Ord Tag where
-    compare t1 t2 = compare (tagName t1) (tagName t2)
+         deriving (Eq, Ord)
 
 instance Show Tag where
     show = unpack . showTag
@@ -137,7 +126,7 @@ instance Eq Record where
     (==) r1 r2 = compare r1 r2 == EQ
 
 instance Ord Record where
-    compare (Record a1 b1 c1 _) (Record a2 b2 c2 _) = compare (a1, b2, c1) (a2, b2, c2)
+    compare (Record a1 b1 c1 _) (Record a2 b2 c2 _) = compare (a1, b1, c1) (a2, b2, c2)
 
 instance Show Record where
     show = unpack . showRecord
@@ -146,7 +135,7 @@ recTags :: Record -> [Tag]
 recTags r = catMaybes [recQsoDate r, recTimeOn r, recCall r] ++ recOtherTags r
 
 showRecord :: Record -> Text
-showRecord (Record call date timeOn tags) = T.concat [
+showRecord (Record date timeOn call tags) = T.concat [
     (fromMaybe "------" $ date >>= tagData), " ",
     (fromMaybe "----" $ timeOn >>= tagData), " ",
     (fromMaybe "------" $ call >>= tagData)]
@@ -195,10 +184,10 @@ parseTag = do
 -- If a tag is a call, qso_date or time_on, update the appropriate fields
 -- If it's something else, put the tag into the record's tag list
 updateRecord :: Tag -> Record -> Record
-updateRecord t@(CALL _)     (Record _    qsoDate timeOn ts) = Record (Just t) qsoDate  timeOn   ts
-updateRecord t@(QSO_DATE _) (Record call _       timeOn ts) = Record call     (Just t) timeOn   ts
-updateRecord t@(TIME_ON _)  (Record call qsoDate _      ts) = Record call     qsoDate  (Just t) ts
-updateRecord t (Record call qsoDate timeOn ts)              = Record call qsoDate timeOn (t : ts)
+updateRecord t@(QSO_DATE _) (Record _       timeOn call ts) = Record (Just t) timeOn   call     ts
+updateRecord t@(TIME_ON _)  (Record qsoDate _      call ts) = Record qsoDate  (Just t) call     ts
+updateRecord t@(CALL _)     (Record qsoDate timeOn _    ts) = Record qsoDate  timeOn   (Just t) ts
+updateRecord t (Record qsoDate timeOn call ts)              = Record qsoDate  timeOn   call     (t : ts)
 
 record :: [Tag] -> Record
 record = foldr updateRecord emptyRec . L.sort
@@ -215,7 +204,9 @@ parseLog = do
     let
         tags = map toTag tuples
         (headerTags, bodyTags) = break ((==) EOH) tags
-        bodyRecords = records $ filter (/= EOH) bodyTags
+        bodyRecords = case (headerTags, bodyTags) of
+            (hts, [])  -> records hts                   -- No EOH tag, no header
+            (hts, bts) -> records $ filter (/= EOH) bts -- Use tags after the EOH tag
 
     return $ Log headerTxt headerTags bodyRecords
 
@@ -224,7 +215,7 @@ adifLogParser = parseOnly parseLog
 
 -- Warning: uses incomplete function "head".
 mergeTags :: [[Tag]] -> [Tag]
-mergeTags = map head . L.group . L.sort . L.concat
+mergeTags = map head . L.groupBy (\t1 t2 -> tagName t1 == tagName t2) . L.sortBy (\t1 t2 -> compare (tagName t1) (tagName t2)) . L.concat
 
 mergeRecords :: [[Record]] -> [Record]
 mergeRecords = map (record . mergeTags . map recTags) . L.group . L.sort . L.concat
@@ -239,7 +230,7 @@ writeTag t = case fromTag t of
     (tn, Just td) -> T.concat ["<", toUpper tn, ":", (pack $ show $ Data.Text.length td), ">", td]
 
 writeRecord :: Record -> Text
-writeRecord (Record call qsoDate timeOn tags) = T.concat $ map mbTag2Str (qsoDate : timeOn : call : map Just tags) ++ ["<EOR>\n"]
+writeRecord (Record qsoDate timeOn call tags) = T.concat $ map mbTag2Str (qsoDate : timeOn : call : map Just tags) ++ ["<EOR>\n"]
     where
         mbTag2Str :: Maybe Tag -> Text
         mbTag2Str Nothing  = ""
