@@ -19,7 +19,6 @@ data Options = Options
 getOptionsParserInfo :: IO (ParserInfo Options)
 getOptionsParserInfo = do
     homeOption <- getHomeOption
-
     return $ info (helper <*> (
         Options
             <$> homeOption
@@ -41,6 +40,4 @@ doExport opt = do
                     putStr $ writeLog log
 
 main :: IO ()
-main = do
-    x <- getOptionsParserInfo
-    execParser x >>= doExport
+main = getOptionsParserInfo >>= execParser >>= doExport
