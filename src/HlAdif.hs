@@ -3,15 +3,16 @@
 module HlAdif
     ( adifLogParser
     , mergeTags
-    , record
+    , toRecord
     , records
     , writeTag
     , writeRecord
     , writeLog
     , toTag
-    , fromTag
     , tagName
     , tagData
+    , tagDataLength
+    , tagDataType
     , mergeLogs
     , Tag (..)
     , Record (..)
@@ -24,10 +25,11 @@ import qualified Data.List as L
 import Data.Maybe
 import Data.Monoid
 import Data.String
-import Data.Text hiding (take, takeWhile, break, tail, map, filter, foldr, head)
+import Data.Text (Text)
 import qualified Data.Text as T
-import Prelude hiding (take, takeWhile)
 import qualified Data.List.Split as S
+import GHC.Exts (groupWith, sortWith)
+import Prelude hiding (take, takeWhile)
 
 -- Optparse-applicative for argument / option parsing
 -- 
@@ -37,6 +39,9 @@ import qualified Data.List.Split as S
 --     * 1, 2
 --     * ADI
 --     * ADX
+--
+-- * Cabrillo
+-- * EDI
 --
 -- * CSV (SCSV, TSV, ...)
 --     * Separator, quote, header
@@ -74,74 +79,64 @@ import qualified Data.List.Split as S
 --
 -- <TAGNAME:4>data some extra data including the space after "data"
 --
-data Tag = QSO_DATE Text
-         | TIME_ON Text
-         | CALL Text
-         | Other Text (Maybe Text)
-         | EOH
-         | EOR
-         deriving (Eq, Ord)
+-- (  Tag name,  (  Data type,  Actual data  )  )
+newtype Tag = CTag { fromTag :: (Text, (Maybe Text, Maybe Text)) }
 
 instance Show Tag where
-    show = unpack . showTag
+    show = T.unpack . tShowTag
 
-toTag :: (Text, Maybe Text) -> Tag
-toTag (n, d) = case toUpper n of
-    "CALL"     -> CALL $ fromMaybe "" d
-    "QSO_DATE" -> QSO_DATE $ fromMaybe "" d
-    "TIME_ON"  -> TIME_ON $ fromMaybe "" d
-    "EOH"      -> EOH
-    "EOR"      -> EOR
-    otherwise  -> Other n d
-
-fromTag :: Tag -> (Text, Maybe Text)
-fromTag EOH = ("EOH", Nothing)
-fromTag EOR = ("EOR", Nothing)
-fromTag (CALL     x) = ("CALL",     Just x)
-fromTag (QSO_DATE x) = ("QSO_DATE", Just x)
-fromTag (TIME_ON  x) = ("TIME_ON",  Just x)
-fromTag (Other n d) = (n, d)
+toTag :: (Text, (Maybe Text, Maybe Text)) -> Tag
+toTag = CTag
 
 tagName :: Tag -> Text
 tagName = fst . fromTag
 
 tagData :: Tag -> Maybe Text
-tagData = snd . fromTag
+tagData = snd . snd . fromTag
 
-showTag :: Tag -> Text
-showTag t = case tagData of
-    Just d  -> T.concat [tagName, "=", d]
-    Nothing -> tagName
-    where
-        (tagName, tagData) = fromTag t
+tagDataLength :: Tag -> Maybe Int
+tagDataLength t = T.length <$> tagData t
+
+tagDataType :: Tag -> Maybe Text
+tagDataType = fst . snd . fromTag
+
+tShowTag :: Tag -> Text
+tShowTag t = case tagData t of
+    Just d  -> T.concat [tagName t, "=", d]
+    Nothing -> tagName t
+
+isTagName :: Text -> Tag -> Bool
+isTagName tx tg = tx == tagName tg
+
+isEOR = isTagName "EOR"
+isEOH = isTagName "EOH"
 
 -- A record is just a list of tags
-data Record = Record { recQsoDate   :: Maybe Tag
-                     , recTimeOn    :: Maybe Tag
-                     , recCall      :: Maybe Tag
-                     , recOtherTags :: [Tag]
-                     }
-
-instance Eq Record where
-    (==) r1 r2 = compare r1 r2 == EQ
-
-instance Ord Record where
-    compare (Record a1 b1 c1 _) (Record a2 b2 c2 _) = compare (a1, b1, c1) (a2, b2, c2)
+-- Considering a tag is a tuple, this makes Record an association list
+newtype Record = CRecord { fromRecord :: [Tag] }
 
 instance Show Record where
-    show = unpack . showRecord
+    show = T.unpack . tShowRecord
 
-recTags :: Record -> [Tag]
-recTags r = catMaybes [recQsoDate r, recTimeOn r, recCall r] ++ recOtherTags r
+toRecord :: [Tag] -> Record
+toRecord = CRecord
 
-showRecord :: Record -> Text
-showRecord (Record date timeOn call tags) = T.concat [
-    (fromMaybe "------" $ date >>= tagData), " ",
-    (fromMaybe "----" $ timeOn >>= tagData), " ",
-    (fromMaybe "------" $ call >>= tagData)]
+tShowRecord :: Record -> Text
+tShowRecord r = T.intercalate " "
+    [ fromMaybe "------" $ field "QSO_DATE" r
+    , fromMaybe "----"   $ field "TIME_ON"  r
+    , fromMaybe "------" $ field "CALL"     r
+    ]
 
-emptyRec :: Record
-emptyRec = Record Nothing Nothing Nothing []
+field :: Text -> Record -> Maybe Text
+field fn r = case lookup fn $ map fromTag $ fromRecord r of
+    Just (_, Just td) -> Just td
+    Just (_, Nothing) -> Nothing
+    Nothing           -> Nothing
+
+-- TODO: rename to qsoKey
+qsoId :: Record -> (Maybe Text, Maybe Text, Maybe Text)
+qsoId r = (field "QSO_DATE" r, field "TIME_ON" r, field "CALL" r)
 
 -- A log is made out of an optional header string and data specifiers in
 -- the header, and a list of records.
@@ -150,96 +145,82 @@ data Log = Log { logHeaderTxt :: Text
                , logRecords :: [Record]
                }
 
-showLog :: Log -> Text
-showLog (Log htxt tags recs) =  T.concat [htxt, "\n", intercalate "\n" (map showTag tags), intercalate "\n" (map showRecord recs)]
-
 instance Show Log where
-    show = unpack . showLog
+    show = T.unpack . tShowLog
 
-parseTag :: Parser (Text, Maybe Text)
+tShowLog :: Log -> Text
+tShowLog (Log htxt htags recs) =  T.intercalate "\n" $ map tShowRecord recs
+
+hamlogHsHeaderTxt = "Created by hl - HamlogHS: the Ham Radio Logger written in Haskell\n"
+
+parseTag :: Parser Tag
 parseTag = do
     char '<'
-    tname <- takeWhile (\x -> x /= ':' && x /= '>')
+    tName <- T.toUpper <$> takeWhile (\x -> x /= ':' && x /= '>')
     n1 <- peekChar
-    tdata <- case n1 of
+    tDataPair <- case n1 of
         Nothing  -> fail "Unexpected end of tag"
         Just ':' -> do
-            take 1
+            take 1 -- Drop :
             length <- decimal
             n2 <- peekChar
-            case n2 of
+            tDataType <- case n2 of
                 Nothing  -> fail "Uexpected end of tag"
-                Just ':' -> takeWhile (/='>') -- Drop data type informatin
-                Just '>' -> return ""
+                Just ':' -> Just <$> takeWhile (/='>')
+                Just '>' -> return Nothing
                 Just c   -> fail $ "Unexpected character: " ++ [c]
-            take 1
-            Just <$> take length
+            take 1 -- Drop : or >
+            tData <- Just <$> take length
+            return (tDataType, tData)
         Just '>' -> do
-            take 1
-            return Nothing
-    takeWhile (/='<')
-    return (tname, tdata)
-
--- Put a tag into a record.
--- If a tag is a call, qso_date or time_on, update the appropriate fields
--- If it's something else, put the tag into the record's tag list
-updateRecord :: Tag -> Record -> Record
-updateRecord t@(QSO_DATE _) (Record _       timeOn call ts) = Record (Just t) timeOn   call     ts
-updateRecord t@(TIME_ON _)  (Record qsoDate _      call ts) = Record qsoDate  (Just t) call     ts
-updateRecord t@(CALL _)     (Record qsoDate timeOn _    ts) = Record qsoDate  timeOn   (Just t) ts
-updateRecord t (Record qsoDate timeOn call ts)              = Record qsoDate  timeOn   call     (t : ts)
-
-record :: [Tag] -> Record
-record = foldr updateRecord emptyRec . L.sort
+            take 1 -- Drop >
+            return (Nothing, Nothing)
+    takeWhile (/='<') -- Drop extra characters after useful data
+    return $ toTag (tName, tDataPair)
 
 -- Break up a list of tags parsed from the body of an ADIF file to
 -- a neat list of records. Empty records are dropped.
 records :: [Tag] -> [Record]
-records ts = map record $ filter (/=[]) $ S.splitOn [EOR] ts
+records ts = map toRecord $ filter (not . null) $ S.splitWhen isEOR ts
 
 parseLog :: Parser Log
 parseLog = do
-    headerTxt <- takeWhile $ (/=) '<'
-    tuples <- many parseTag
-    let
-        tags = map toTag tuples
-        (headerTags, bodyTags) = break ((==) EOH) tags
-        bodyRecords = case (headerTags, bodyTags) of
-            (hts, [])  -> records hts                   -- No EOH tag, no header
-            (hts, bts) -> records $ filter (/= EOH) bts -- Use tags after the EOH tag
-
-    return $ Log headerTxt headerTags bodyRecords
+    hTxt <- takeWhile $ (/=) '<'
+    (headerTags, bodyTags) <- break isEOH <$> many parseTag
+    return $ case (headerTags, bodyTags) of
+        (hts, [])  -> Log hTxt []  (records hts)          -- No EOH tag, no header
+        (hts, bts) -> Log hTxt hts (records $ drop 1 bts) -- Use tags after the EOH tag
 
 adifLogParser :: Text -> Either String Log
 adifLogParser = parseOnly parseLog
 
--- Warning: uses incomplete function "head".
+-- Warning: uses incomplete function "head". Probably OK, but still.
 mergeTags :: [[Tag]] -> [Tag]
-mergeTags = map head . L.groupBy (\t1 t2 -> tagName t1 == tagName t2) . L.sortBy (\t1 t2 -> compare (tagName t1) (tagName t2)) . L.concat
+mergeTags = map head . groupWith tagName . sortWith tagName . L.concat
 
 mergeRecords :: [[Record]] -> [Record]
-mergeRecords = map (record . mergeTags . map recTags) . L.group . L.sort . L.concat
+mergeRecords = map (toRecord . mergeTags . map fromRecord) . groupWith qsoId . sortWith qsoId . L.concat
 
--- TODO: currently there is no logic to handle header tags.
 mergeLogs :: [Log] -> Log
-mergeLogs = Log "" [] . mergeRecords . map logRecords
+mergeLogs ls = Log "" (mergeTags $ map logHeaderTags ls) (mergeRecords $ map logRecords ls)
 
 writeTag :: Tag -> Text
-writeTag t = case fromTag t of
-    (tn, Nothing) -> T.concat ["<", toUpper tn, ">"]
-    (tn, Just td) -> T.concat ["<", toUpper tn, ":", (pack $ show $ Data.Text.length td), ">", td]
+writeTag t = T.concat
+    [ "<"
+    , tagName t
+    , fromMaybe "" $ (":"<>) <$> T.pack <$> show <$> tagDataLength t
+    , fromMaybe "" $ (":"<>) <$> tagDataType t
+    , ">"
+    , fromMaybe "" (tagData t)
+    ]
 
 writeRecord :: Record -> Text
-writeRecord (Record qsoDate timeOn call tags) = T.concat $ map mbTag2Str (qsoDate : timeOn : call : map Just tags) ++ ["<EOR>\n"]
-    where
-        mbTag2Str :: Maybe Tag -> Text
-        mbTag2Str Nothing  = ""
-        mbTag2Str (Just t) = T.concat ["  ", writeTag t, "\n"]
+writeRecord r = T.intercalate "\n" (map writeTag $ fromRecord r) <> "\n<EOR>\n"
 
 writeLog :: Log -> Text
-writeLog (Log htxt htags recs) =
+writeLog (Log htxt htags brecs) =
     T.concat [ htxt
-             , intercalate "\n" $ map writeTag htags
+             , T.intercalate "\n" $ map writeTag htags
              , "<EOH>\n"
-             , Data.Text.concat $ map writeRecord $ L.sort recs
+             , T.concat $ map writeRecord brecs
              ]

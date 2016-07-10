@@ -19,8 +19,8 @@ parseAdifRecord :: Monad m => String -> m Tag
 parseAdifRecord s = do
     if '=' `elem` s then do
         let t = break (== '=') s
-        return $ toTag $ (pack $ fst t, Just $ pack $ drop 1 $ snd t)
-    else return $ toTag (pack s, Nothing)
+        return $ toTag $ (pack $ fst t, (Nothing, Just $ pack $ drop 1 $ snd t))
+    else return $ toTag (pack s, (Nothing, Nothing))
 
 adifRecordArguments :: Parser [Tag]
 adifRecordArguments = some (argument (str >>= parseAdifRecord) (metavar "FIELDS..."))

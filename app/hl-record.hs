@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
 import HlAdif
@@ -18,7 +19,7 @@ data Options = Options
 getEnvTags :: IO [Tag]
 getEnvTags = do
     env <- filter (isPrefixOf "HL_T_" . fst) <$> getEnvironment
-    return $ map (\(k,v)->toTag (pack $ drop 5 k, Just $ pack v)) env
+    return $ map (\(k,v)->toTag (toUpper $ pack $ drop 5 k, (Nothing, Just $ pack v))) env
 
 getCalculatedTags :: IO [Tag]
 getCalculatedTags = do
@@ -30,7 +31,7 @@ getCalculatedTags = do
         minute           = hm `div` 60
         datestr          = printf "%04d%02d%02d" year month day
         timestr          = printf "%02d%02d" hour minute
-    return [QSO_DATE (pack datestr), TIME_ON (pack timestr)]
+    return [toTag ("QSO_DATE", (Nothing, Just $ pack datestr)), toTag ("TIME_ON", (Nothing, Just $ pack timestr))]
 
 getOptionsParserInfo :: IO (ParserInfo Options)
 getOptionsParserInfo = do
@@ -50,7 +51,7 @@ doRecord opt = do
 
     let fs = mergeTags [tags opt, envTags, calcTags]
 
-    putStr $ unpack $ writeRecord $ record fs
+    putStr $ unpack $ writeRecord $ toRecord fs
 
 main :: IO ()
 main = do
