@@ -158,7 +158,8 @@ parseTag = do
     char '<'
     tName <- T.toUpper <$> takeWhile (\x -> x /= ':' && x /= '>')
     n1 <- peekChar
-    tDataPair <- case n1 of
+
+    (tDataType, tData) <- case n1 of
         Nothing  -> fail "Unexpected end of tag"
         Just ':' -> do
             take 1 -- Drop :
@@ -166,17 +167,25 @@ parseTag = do
             n2 <- peekChar
             tDataType <- case n2 of
                 Nothing  -> fail "Uexpected end of tag"
-                Just ':' -> Just <$> takeWhile (/='>')
-                Just '>' -> return Nothing
+                Just ':' -> do
+                    take 1 -- Drop :
+                    Just <$> takeWhile (/='>')
+                Just '>' -> do
+                    return Nothing
                 Just c   -> fail $ "Unexpected character: " ++ [c]
-            take 1 -- Drop : or >
+            take 1 -- Drop >
             tData <- Just <$> take length
             return (tDataType, tData)
         Just '>' -> do
             take 1 -- Drop >
             return (Nothing, Nothing)
+
     takeWhile (/='<') -- Drop extra characters after useful data
-    return $ toTag (tName, tDataPair)
+
+    -- Use 6 character long time representation
+    let tData' = if tName == "TIME_ON" then (\x-> x <> T.replicate (6 - T.length x) "0") <$> tData else tData
+
+    return $ toTag (tName, (tDataType, tData'))
 
 -- Break up a list of tags parsed from the body of an ADIF file to
 -- a neat list of records. Empty records are dropped.
