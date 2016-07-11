@@ -34,6 +34,8 @@ import qualified Data.List.Split as S
 import GHC.Exts (groupWith, sortWith)
 import qualified Data.List as L
 import Data.Maybe
+import qualified Data.Char as CH
+import Data.Monoid
 
 -- A Tag is the ADIF representation of piece of data or metadata,
 -- e.g. a field of a record (Other), or the end of header / end
@@ -44,12 +46,32 @@ import Data.Maybe
 -- (  Tag name,  Maybe ( Actual data, Maybe data type )  )
 newtype Tag = CTag { fromTag :: (ByteString, Maybe (ByteString, Maybe ByteString)) }
 
+tMap :: (ByteString -> ByteString) -> Tag -> Tag
+tMap _ t@(CTag (_, Nothing)) = t
+tMap f   (CTag (n, Just(d, mbT))) = CTag (n, Just (f d, mbT))
+
 -- Take care of enforcing certain constraints and hide internals
 -- toTag name data dataType
 toTag :: ByteString -> Maybe ByteString -> Maybe ByteString -> Tag
-toTag n Nothing _         = CTag (n, Nothing)
-toTag n (Just d) Nothing  = CTag (n, Just (d, Nothing))
-toTag n (Just d) (Just t) = CTag (n, Just (d, Just t))
+toTag n Nothing _         = toTag' (n, Nothing)
+toTag n (Just d) Nothing  = toTag' (n, Just (d, Nothing))
+toTag n (Just d) (Just t) = toTag' (n, Just (d, Just t))
+
+-- TODO: this operation can fail. Use Monad or MonadFail
+toTag' :: (ByteString, Maybe (ByteString, Maybe ByteString)) -> Tag
+toTag' (n, mbP) -- The Name and a Maybe Pair
+
+    -- Always use 6 digit, second precision timestamps
+    | ucn `elem` ["TIME_ON", "TIME_OFF"] = (\x-> x <> B.replicate (6 - B.length x) '0') `tMap` ucnTag
+
+    -- Use upper case in data with these tags
+    | ucn `elem` ["CALL", "GRIDSQUARE", "MY_GRIDSQUARE"] = toUpper `tMap` ucnTag
+
+    -- Otherwise just use the uppercased-but-untreated tag
+    | otherwise = ucnTag
+    where
+        ucnTag = CTag (toUpper n, mbP) -- The name is upper case, but data & data type are untreated
+        ucn    = tagName ucnTag        -- The Upper Case Name
 
 tagName :: Tag -> ByteString
 tagName = fst . fromTag
@@ -128,3 +150,6 @@ showTag :: Tag -> ByteString
 showTag t = case tagData t of
     Just d  -> B.concat [tagName t, "=", d]
     Nothing -> tagName t
+
+toUpper :: ByteString -> ByteString
+toUpper = B.map CH.toUpper

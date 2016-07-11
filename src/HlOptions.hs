@@ -8,6 +8,7 @@ module HlOptions
 
 import Data.Maybe
 import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.UTF8 as BU
 import HlLog
 import Options.Applicative
 import System.Directory
@@ -19,7 +20,7 @@ parseAdifRecord :: Monad m => String -> m Tag
 parseAdifRecord s = do
     if '=' `elem` s then do
         let t = break (== '=') s
-        return $ toTag (B.pack $ fst t) (Just $ B.pack $ drop 1 $ snd t) Nothing
+        return $ toTag (B.pack $ fst t) (Just $ BU.fromString $ drop 1 $ snd t) Nothing
     else return $ toTag (B.pack s) Nothing Nothing
 
 adifRecordArguments :: Parser [Tag]

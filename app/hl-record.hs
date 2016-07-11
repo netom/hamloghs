@@ -21,7 +21,7 @@ data Options = Options
 getEnvTags :: IO [Tag]
 getEnvTags = do
     env <- filter (isPrefixOf "HL_T_" . fst) <$> getEnvironment
-    return $ map (\(k,v)->toTag (B.map toUpper $ B.pack $ drop 5 k) (Just $ B.pack v) Nothing) env
+    return $ map (\(k,v)->toTag (B.pack $ drop 5 k) (Just $ B.pack v) Nothing) env
 
 getCalculatedTags :: IO [Tag]
 getCalculatedTags = do
@@ -37,7 +37,6 @@ getCalculatedTags = do
 
 getOptionsParserInfo :: IO (ParserInfo Options)
 getOptionsParserInfo = do
-
     return $ info (helper <*> (
         Options
             <$> adifRecordArguments

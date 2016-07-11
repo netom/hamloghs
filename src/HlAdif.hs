@@ -22,16 +22,10 @@ import Prelude hiding (take, takeWhile)
 
 hamlogHsHeaderTxt = "Created by hl - HamlogHS: the Ham Radio Logger written in Haskell\n"
 
--- Constraints:
---
--- [X] Tag names are UPPER CASE
--- [ ] Callsigns are UPPER CASE
--- [ ] Maidenhead locators are UPPER CASE
--- [X] TIME_ON and TIME_OFF always use second precision
 parseTag :: Parser Tag
 parseTag = do
     char '<'
-    tName <- B.map toUpper <$> takeWhile (\x -> x /= ':' && x /= '>')
+    tName <- takeWhile (\x -> x /= ':' && x /= '>')
     n1 <- peekChar
 
     (tDataType, tData) <- case n1 of
@@ -57,10 +51,7 @@ parseTag = do
 
     takeWhile (/='<') -- Drop extra characters after useful data
 
-    -- Use 6 character long time representation
-    let tData' = if tName == "TIME_ON" then (\x-> x <> B.replicate (6 - B.length x) '0') <$> tData else tData
-
-    return $ toTag tName tData' tDataType
+    return $ toTag tName tData tDataType
 
 parseLog :: Parser Log
 parseLog = do
