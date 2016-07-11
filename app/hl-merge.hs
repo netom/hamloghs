@@ -3,7 +3,7 @@ module Main where
 import HlAdif
 import HlOptions
 import Options.Applicative
-import qualified Data.Text.IO as TIO
+import qualified Data.ByteString.Char8 as B
 
 data Options = Options
   { files :: [String]
@@ -24,8 +24,8 @@ parseErrorHandler (Right log) = return log
 
 doMerge :: Options -> IO ()
 doMerge opt = do
-    contentList <- mapM TIO.readFile $ files opt
-    (writeLog <$> mergeLogs <$> mapM (parseErrorHandler . adifLogParser) contentList) >>= TIO.putStr
+    contentList <- mapM B.readFile $ files opt
+    (writeLog <$> mergeLogs <$> mapM (parseErrorHandler . adifLogParser) contentList) >>= B.putStr
 
 main :: IO ()
 main = execParser optionsParserInfo >>= doMerge

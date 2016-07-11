@@ -6,7 +6,7 @@ import Options.Applicative
 import System.Directory
 import System.IO
 import System.IO.Temp
-import qualified Data.Text.IO as TIO
+import qualified Data.ByteString.Char8 as B
 
 data Options = Options
   { basedir :: String
@@ -36,9 +36,9 @@ doImport opt = do
 
     handleList   <- mapM (flip openFile ReadMode) $ dbFileName : files opt
     (tmpn, tmph) <- openTempFile bd "tmp.adi"
-    contentList  <- mapM TIO.hGetContents handleList
+    contentList  <- mapM B.hGetContents handleList
 
-    (writeLog <$> mergeLogs <$> mapM (parseErrorHandler . adifLogParser) contentList) >>= TIO.hPutStr tmph
+    (writeLog <$> mergeLogs <$> mapM (parseErrorHandler . adifLogParser) contentList) >>= B.hPutStr tmph
 
     hClose tmph
     mapM hClose handleList

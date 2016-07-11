@@ -5,12 +5,13 @@ import HlAdif
 import HlOptions
 import Options.Applicative
 import System.Environment
+import Data.Char
 import Data.List
 import Data.Time.Clock
 import Data.Time.Calendar
 import Text.Printf
 import GHC.Int
-import Data.Text hiding (filter, isPrefixOf, map, drop)
+import qualified Data.ByteString.Char8 as B
 
 data Options = Options
   { tags :: [Tag]
@@ -19,7 +20,7 @@ data Options = Options
 getEnvTags :: IO [Tag]
 getEnvTags = do
     env <- filter (isPrefixOf "HL_T_" . fst) <$> getEnvironment
-    return $ map (\(k,v)->toTag (toUpper $ pack $ drop 5 k, (Nothing, Just $ pack v))) env
+    return $ map (\(k,v)->toTag (B.map toUpper $ B.pack $ drop 5 k, (Nothing, Just $ B.pack v))) env
 
 getCalculatedTags :: IO [Tag]
 getCalculatedTags = do
@@ -31,7 +32,7 @@ getCalculatedTags = do
         minute           = hm `div` 60
         datestr          = printf "%04d%02d%02d" year month day
         timestr          = printf "%02d%02d" hour minute
-    return [toTag ("QSO_DATE", (Nothing, Just $ pack datestr)), toTag ("TIME_ON", (Nothing, Just $ pack timestr))]
+    return [toTag ("QSO_DATE", (Nothing, Just $ B.pack datestr)), toTag ("TIME_ON", (Nothing, Just $ B.pack timestr))]
 
 getOptionsParserInfo :: IO (ParserInfo Options)
 getOptionsParserInfo = do
@@ -51,7 +52,7 @@ doRecord opt = do
 
     let fs = mergeTags [tags opt, envTags, calcTags]
 
-    putStr $ unpack $ writeRecord $ toRecord fs
+    B.putStr $ writeRecord $ toRecord fs
 
 main :: IO ()
 main = do

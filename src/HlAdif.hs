@@ -20,13 +20,14 @@ module HlAdif
     ) where
 
 import Control.Applicative
-import Data.Attoparsec.Text
+import Data.Attoparsec.ByteString.Char8
+import Data.Char
 import qualified Data.List as L
 import Data.Maybe
 import Data.Monoid
 import Data.String
-import Data.Text (Text)
-import qualified Data.Text as T
+import Data.ByteString.Char8 (ByteString)
+import qualified Data.ByteString.Char8 as B
 import qualified Data.List.Split as S
 import GHC.Exts (groupWith, sortWith)
 import Prelude hiding (take, takeWhile)
@@ -80,32 +81,32 @@ import Prelude hiding (take, takeWhile)
 -- <TAGNAME:4>data some extra data including the space after "data"
 --
 -- (  Tag name,  (  Data type,  Actual data  )  )
-newtype Tag = CTag { fromTag :: (Text, (Maybe Text, Maybe Text)) }
+newtype Tag = CTag { fromTag :: (ByteString, (Maybe ByteString, Maybe ByteString)) }
 
 instance Show Tag where
-    show = T.unpack . tShowTag
+    show = B.unpack . tShowTag
 
-toTag :: (Text, (Maybe Text, Maybe Text)) -> Tag
+toTag :: (ByteString, (Maybe ByteString, Maybe ByteString)) -> Tag
 toTag = CTag
 
-tagName :: Tag -> Text
+tagName :: Tag -> ByteString
 tagName = fst . fromTag
 
-tagData :: Tag -> Maybe Text
+tagData :: Tag -> Maybe ByteString
 tagData = snd . snd . fromTag
 
 tagDataLength :: Tag -> Maybe Int
-tagDataLength t = T.length <$> tagData t
+tagDataLength t = B.length <$> tagData t
 
-tagDataType :: Tag -> Maybe Text
+tagDataType :: Tag -> Maybe ByteString
 tagDataType = fst . snd . fromTag
 
-tShowTag :: Tag -> Text
+tShowTag :: Tag -> ByteString
 tShowTag t = case tagData t of
-    Just d  -> T.concat [tagName t, "=", d]
+    Just d  -> B.concat [tagName t, "=", d]
     Nothing -> tagName t
 
-isTagName :: Text -> Tag -> Bool
+isTagName :: ByteString -> Tag -> Bool
 isTagName tx tg = tx == tagName tg
 
 isEOR = isTagName "EOR"
@@ -116,47 +117,53 @@ isEOH = isTagName "EOH"
 newtype Record = CRecord { fromRecord :: [Tag] }
 
 instance Show Record where
-    show = T.unpack . tShowRecord
+    show = B.unpack . tShowRecord
 
 toRecord :: [Tag] -> Record
 toRecord = CRecord
 
-tShowRecord :: Record -> Text
-tShowRecord r = T.intercalate " "
+tShowRecord :: Record -> ByteString
+tShowRecord r = B.intercalate " "
     [ fromMaybe "------" $ field "QSO_DATE" r
     , fromMaybe "----"   $ field "TIME_ON"  r
     , fromMaybe "------" $ field "CALL"     r
     ]
 
-field :: Text -> Record -> Maybe Text
+field :: ByteString -> Record -> Maybe ByteString
 field fn r = case lookup fn $ map fromTag $ fromRecord r of
     Just (_, Just td) -> Just td
     Just (_, Nothing) -> Nothing
     Nothing           -> Nothing
 
 -- TODO: rename to qsoKey
-qsoId :: Record -> (Maybe Text, Maybe Text, Maybe Text)
+qsoId :: Record -> (Maybe ByteString, Maybe ByteString, Maybe ByteString)
 qsoId r = (field "QSO_DATE" r, field "TIME_ON" r, field "CALL" r)
 
 -- A log is made out of an optional header string and data specifiers in
 -- the header, and a list of records.
-data Log = Log { logHeaderTxt :: Text
+data Log = Log { logHeaderTxt :: ByteString
                , logHeaderTags :: [Tag]
                , logRecords :: [Record]
                }
 
 instance Show Log where
-    show = T.unpack . tShowLog
+    show = B.unpack . tShowLog
 
-tShowLog :: Log -> Text
-tShowLog (Log htxt htags recs) =  T.intercalate "\n" $ map tShowRecord recs
+tShowLog :: Log -> ByteString
+tShowLog (Log htxt htags recs) =  B.intercalate "\n" $ map tShowRecord recs
 
 hamlogHsHeaderTxt = "Created by hl - HamlogHS: the Ham Radio Logger written in Haskell\n"
 
+-- Constraints:
+--
+-- [X] Tag names are UPPER CASE
+-- [ ] Callsigns are UPPER CASE
+-- [ ] Maidenhead locators are UPPER CASE
+-- [X] TIME_ON and TIME_OFF always use second precision
 parseTag :: Parser Tag
 parseTag = do
     char '<'
-    tName <- T.toUpper <$> takeWhile (\x -> x /= ':' && x /= '>')
+    tName <- B.map toUpper <$> takeWhile (\x -> x /= ':' && x /= '>')
     n1 <- peekChar
 
     (tDataType, tData) <- case n1 of
@@ -183,7 +190,7 @@ parseTag = do
     takeWhile (/='<') -- Drop extra characters after useful data
 
     -- Use 6 character long time representation
-    let tData' = if tName == "TIME_ON" then (\x-> x <> T.replicate (6 - T.length x) "0") <$> tData else tData
+    let tData' = if tName == "TIME_ON" then (\x-> x <> B.replicate (6 - B.length x) '0') <$> tData else tData
 
     return $ toTag (tName, (tDataType, tData'))
 
@@ -200,7 +207,7 @@ parseLog = do
         (hts, [])  -> Log hTxt []  (records hts)          -- No EOH tag, no header
         (hts, bts) -> Log hTxt hts (records $ drop 1 bts) -- Use tags after the EOH tag
 
-adifLogParser :: Text -> Either String Log
+adifLogParser :: ByteString -> Either String Log
 adifLogParser = parseOnly parseLog
 
 -- Warning: uses incomplete function "head". Probably OK, but still.
@@ -213,23 +220,23 @@ mergeRecords = map (toRecord . mergeTags . map fromRecord) . groupWith qsoId . s
 mergeLogs :: [Log] -> Log
 mergeLogs ls = Log "" (mergeTags $ map logHeaderTags ls) (mergeRecords $ map logRecords ls)
 
-writeTag :: Tag -> Text
-writeTag t = T.concat
+writeTag :: Tag -> ByteString
+writeTag t = B.concat
     [ "<"
     , tagName t
-    , fromMaybe "" $ (":"<>) <$> T.pack <$> show <$> tagDataLength t
+    , fromMaybe "" $ (":"<>) <$> B.pack <$> show <$> tagDataLength t
     , fromMaybe "" $ (":"<>) <$> tagDataType t
     , ">"
     , fromMaybe "" (tagData t)
     ]
 
-writeRecord :: Record -> Text
-writeRecord r = T.intercalate "\n" (map writeTag $ fromRecord r) <> "\n<EOR>\n"
+writeRecord :: Record -> ByteString
+writeRecord r = B.intercalate "\n" (map writeTag $ fromRecord r) <> "\n<EOR>\n"
 
-writeLog :: Log -> Text
+writeLog :: Log -> ByteString
 writeLog (Log htxt htags brecs) =
-    T.concat [ htxt
-             , T.intercalate "\n" $ map writeTag htags
+    B.concat [ htxt
+             , B.intercalate "\n" $ map writeTag htags
              , "<EOH>\n"
-             , T.concat $ map writeRecord brecs
+             , B.concat $ map writeRecord brecs
              ]
