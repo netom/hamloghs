@@ -1,17 +1,44 @@
-# hamloghs - Ham radio log in Haskell
+# HamLogHS
+
+A Ham radio logger written in Haskell.
+
+## What is this?
+
+HamLogHS is a set of command-line tools to manage amateur radio station logs.
+
+The feature set of the few basic executables are stable enough to start experimenting with it, but BE VERY CAREFUL, as the 
+application does not have any test yet, and nor I, nor anyone can every guarantee that it won't cause a horrible and 
+unrecoverable data loss.
+
+***USE IT ONLY ON YOUR OWN RESPONSIBILITY***
 
 ## Project outline
 
-WARNING - this is NOT a useful project yet. It's heavily work in progress. Any suggestion or feature request is very welcome
+### TODO
 
-HamLogHS is a set of command-line tools to manage station logs.
+There is really a *lot* of thigs to be done. For an immediate list of how you can help, see TODO.md.
 
-These tools all use the standard ADIF (ADI/ADX) format to store and transfer data.
-These logs can be imported / exported using various logger applications
-and websites like LotW, eQSL, and ClubLog.
+### Data storage & transfer
 
-HamLogHS tools also understand other file formats shuch as Cabrillo, CSV
-and XML.
+HamLogHS tools all use the standard ADIF (ADI) format to store and transfer data. These logs can be imported / exported using 
+various logger applications and websites like LotW.arrl.org, QRZ.com, eQSL.cc, and ClubLog.org.
+
+The programs should be suitable for use by hand, or by graphical or command-line front-ends.
+
+The most important goal is to provide such binaries.
+
+### Library
+
+HamLogHS will - at some distant point in time - will provide libraries to read and write ADIF data.
+
+This is the secondary goal.
+
+### Why?
+
+No program is perfect. Never will. HamLogHS is no exception. Since the ADIF file format is so pervasive, it was choosen as
+the disk format and the "pipe format" - the way programs store, organicze and communicate data.
+
+I admit I *hate* ADIF format with a passion. (To see why, see my blog article "Musings on the ADIF file format": )
 
 ## Development strategy: *Do one thing, do it well*
 
