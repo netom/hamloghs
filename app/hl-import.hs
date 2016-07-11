@@ -1,6 +1,7 @@
 module Main where
 
 import HlAdif
+import HlLog
 import HlOptions
 import Options.Applicative
 import System.Directory

@@ -25,6 +25,8 @@ and XML.
   * List unconfirmed contacts counting towards my DXCC award
 * The tools accept command-line arguments, and can parse environment variables. Config file parsing is not included.
 
+See TODO.md for immediate plans.
+
 ## Planned tools
 
 * Creating records

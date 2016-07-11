@@ -8,7 +8,7 @@ module HlOptions
 
 import Data.Maybe
 import qualified Data.ByteString.Char8 as B
-import HlAdif
+import HlLog
 import Options.Applicative
 import System.Directory
 import System.Environment
