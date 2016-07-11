@@ -5,7 +5,6 @@ module HlLog
     , Record
     , Log
     , toTag
-    , fromTag
     , toRecord
     , toLog
     , fromRecord
@@ -29,6 +28,7 @@ module HlLog
     ) where
 
 import Data.ByteString.Char8 (ByteString)
+import Control.Monad
 import qualified Data.ByteString.Char8 as B
 import qualified Data.List.Split as S
 import GHC.Exts (groupWith, sortWith)
@@ -41,26 +41,30 @@ import Data.Maybe
 --
 -- <TAGNAME:4>data some extra data including the space after "data"
 --
--- (  Tag name,  (  Data type,  Actual data  )  )
-newtype Tag = CTag { fromTag :: (ByteString, (Maybe ByteString, Maybe ByteString)) }
+-- (  Tag name,  Maybe ( Actual data, Maybe data type )  )
+newtype Tag = CTag { fromTag :: (ByteString, Maybe (ByteString, Maybe ByteString)) }
 
-toTag :: (ByteString, (Maybe ByteString, Maybe ByteString)) -> Tag
-toTag = CTag
+-- Take care of enforcing certain constraints and hide internals
+-- toTag name data dataType
+toTag :: ByteString -> Maybe ByteString -> Maybe ByteString -> Tag
+toTag n Nothing _         = CTag (n, Nothing)
+toTag n (Just d) Nothing  = CTag (n, Just (d, Nothing))
+toTag n (Just d) (Just t) = CTag (n, Just (d, Just t))
 
 tagName :: Tag -> ByteString
 tagName = fst . fromTag
 
 tagData :: Tag -> Maybe ByteString
-tagData = snd . snd . fromTag
+tagData =  (<$>) fst . snd . fromTag
 
 tagDataLength :: Tag -> Maybe Int
-tagDataLength t = B.length <$> tagData t
+tagDataLength = (<$>) B.length . tagData
 
 tagDataType :: Tag -> Maybe ByteString
-tagDataType = fst . snd . fromTag
+tagDataType = join . (<$>) snd . snd . fromTag
 
 isTagName :: ByteString -> Tag -> Bool
-isTagName tx tg = tx == tagName tg
+isTagName = flip $ (==) . tagName
 
 isEOR = isTagName "EOR"
 isEOH = isTagName "EOH"
@@ -79,10 +83,9 @@ qsoKey :: Record -> (Maybe ByteString, Maybe ByteString, Maybe ByteString)
 qsoKey r = (field "QSO_DATE" r, field "TIME_ON" r, field "CALL" r)
 
 field :: ByteString -> Record -> Maybe ByteString
-field fn r = case lookup fn $ map fromTag $ fromRecord r of
-    Just (_, Just td) -> Just td
-    Just (_, Nothing) -> Nothing
-    Nothing           -> Nothing
+field fn r = case join $ lookup fn $ map fromTag $ fromRecord r of
+    Just (d, _) -> Just d
+    Nothing     -> Nothing
 
 -- Break up a list of tags parsed from the body of an ADIF file to
 -- a neat list of records. Empty records are dropped.

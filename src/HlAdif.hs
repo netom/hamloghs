@@ -60,7 +60,7 @@ parseTag = do
     -- Use 6 character long time representation
     let tData' = if tName == "TIME_ON" then (\x-> x <> B.replicate (6 - B.length x) '0') <$> tData else tData
 
-    return $ toTag (tName, (tDataType, tData'))
+    return $ toTag tName tData' tDataType
 
 parseLog :: Parser Log
 parseLog = do

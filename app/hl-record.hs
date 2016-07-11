@@ -21,7 +21,7 @@ data Options = Options
 getEnvTags :: IO [Tag]
 getEnvTags = do
     env <- filter (isPrefixOf "HL_T_" . fst) <$> getEnvironment
-    return $ map (\(k,v)->toTag (B.map toUpper $ B.pack $ drop 5 k, (Nothing, Just $ B.pack v))) env
+    return $ map (\(k,v)->toTag (B.map toUpper $ B.pack $ drop 5 k) (Just $ B.pack v) Nothing) env
 
 getCalculatedTags :: IO [Tag]
 getCalculatedTags = do
@@ -33,7 +33,7 @@ getCalculatedTags = do
         minute           = hm `div` 60
         datestr          = printf "%04d%02d%02d" year month day
         timestr          = printf "%02d%02d" hour minute
-    return [toTag ("QSO_DATE", (Nothing, Just $ B.pack datestr)), toTag ("TIME_ON", (Nothing, Just $ B.pack timestr))]
+    return [toTag "QSO_DATE" (Just $ B.pack datestr) Nothing, toTag "TIME_ON" (Just $ B.pack timestr) Nothing]
 
 getOptionsParserInfo :: IO (ParserInfo Options)
 getOptionsParserInfo = do
