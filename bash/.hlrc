@@ -1,0 +1,32 @@
+# This is an example of how to set up environment variables
+# and aliases / functions to make the use of the hl-* commands
+# more practivcal.
+
+export HL_T_MY_CITY=Budapest
+export HL_T_STATION_CALLSIGN=HA5FTL
+export HL_T_MY_RIG="Elecraft K3S"
+export HL_T_MY_GRIDSQUARE=JN97MM
+
+# Elecraft K3/KX3
+export HL_RIGCTL_M=229
+
+# Serial line to communicate with the rig
+export HL_RIGCTL_R=/dev/ttyUSB0
+
+# Automatically fetch frequency from the radio
+function hl-rnd-record {
+    HL_T_FREQ=$(echo "scale=9;$(rigctl -m$HL_RIGCTL_M -r $HL_RIGCTL_R f)/1000000" | bc) command hl-record $@ >> ~/.hl/data/random-contacts.adi
+    tail ~/.hl/data/random-contacts.adi
+}
+
+function hl-rnd-clear {
+    truncate -s 0 ~/.hl/data/random-contacts.adi
+}
+
+function hl-rnd-export {
+    cat ~/.hl/data/random-contacts.adi
+}
+
+function hl-rnd-merge {
+    hl-merge ~/.hl/data/random-contacts.adi
+}
