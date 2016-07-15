@@ -9,28 +9,28 @@ import Prelude hiding (readFile, putStr)
 import System.Environment
 import System.IO hiding (readFile, putStr)
 import qualified Data.ByteString.Char8 as B
+import Data.Attoparsec.ByteString.Char8
 
 data Options = Options
-  { basedir :: String
+  { getInputHandle :: IO Handle
   }
 
 getOptionsParserInfo :: IO (ParserInfo Options)
 getOptionsParserInfo = do
-    homeOption <- getHomeOption
     return $ info (helper <*> (
         Options
-            <$> homeOption
+            <$> inputHandleArgument
       )) (
         fullDesc
-            <> progDesc "Export the ADIF database to a single file"
+            <> progDesc "Read ALL.TXT files created by the WSJT-X software, and extract JT9 and JT65 contact information as ADIF"
       )
 
-doExport :: Options -> IO ()
-doExport opt = do
-    parseResult <- adifLogParser <$> B.readFile (basedir opt ++ "/data/hl.adi")
+main :: IO ()
+main = getOptionsParserInfo >>= execParser >>= \opt -> do
+    fail "NOT IMPLEMENTED"
+    h <- getInputHandle opt
+    parseResult <- adifLogParser <$> B.hGetContents h
+
     case parseResult of
         Left errorMsg -> putStrLn errorMsg
-        Right log -> B.putStr $ writeLog log
-
-main :: IO ()
-main = getOptionsParserInfo >>= execParser >>= doExport
+        Right log -> putStrLn $ show log

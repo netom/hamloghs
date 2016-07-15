@@ -71,6 +71,27 @@ executable hl-merge
                      , bytestring
   default-language:    Haskell2010
 
+executable hl-list
+  hs-source-dirs:      app
+  main-is:             hl-list.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , hamloghs
+                     , optparse-applicative
+                     , bytestring
+  default-language:    Haskell2010
+
+executable hl-alltxt
+  hs-source-dirs:      app
+  main-is:             hl-alltxt.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , hamloghs
+                     , optparse-applicative
+                     , bytestring
+                     , attoparsec
+  default-language:    Haskell2010
+
 test-suite hamloghs-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test

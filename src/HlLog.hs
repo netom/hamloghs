@@ -121,7 +121,7 @@ mergeRecords :: [[Record]] -> [Record]
 mergeRecords = map (toRecord . mergeTags . map fromRecord) . groupWith qsoKey . sortWith qsoKey . L.concat
 
 mergeLogs :: [Log] -> Log
-mergeLogs ls = Log "" (mergeTags $ map logHeaderTags ls) (mergeRecords $ map logRecords ls)
+mergeLogs ls = Log "" [] (mergeRecords $ map logRecords ls)
 
 -- A log is made out of an optional header string and data specifiers in
 -- the header, and a list of records.

@@ -11,26 +11,24 @@ import System.IO hiding (readFile, putStr)
 import qualified Data.ByteString.Char8 as B
 
 data Options = Options
-  { basedir :: String
+  { getInputHandle :: IO Handle
   }
 
 getOptionsParserInfo :: IO (ParserInfo Options)
 getOptionsParserInfo = do
-    homeOption <- getHomeOption
     return $ info (helper <*> (
         Options
-            <$> homeOption
+            <$> inputHandleArgument
       )) (
         fullDesc
-            <> progDesc "Export the ADIF database to a single file"
+            <> progDesc "Present an ADIF file as a list"
       )
 
-doExport :: Options -> IO ()
-doExport opt = do
-    parseResult <- adifLogParser <$> B.readFile (basedir opt ++ "/data/hl.adi")
+main :: IO ()
+main = getOptionsParserInfo >>= execParser >>= \opt -> do
+    h <- getInputHandle opt
+    parseResult <- adifLogParser <$> B.hGetContents h
+
     case parseResult of
         Left errorMsg -> putStrLn errorMsg
-        Right log -> B.putStr $ writeLog log
-
-main :: IO ()
-main = getOptionsParserInfo >>= execParser >>= doExport
+        Right log -> putStrLn $ show log
