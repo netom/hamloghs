@@ -3,8 +3,8 @@ version:             0.1.0.0
 synopsis:            Ham radio log in Haskell
 description:         Log contacts, search, import, export, edit data
 homepage:            https://github.com/netom/hamloghs#readme
-license:             BSD3
-license-file:        LICENSE
+license:             MIT
+license-file:        LICENSE.md
 author:              Fábián Tamás László
 maintainer:          giganetom@gmail.com
 copyright:           2016 Fábián Tamás László
