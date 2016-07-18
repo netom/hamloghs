@@ -71,9 +71,9 @@ executable hl-merge
                      , bytestring
   default-language:    Haskell2010
 
-executable hl-list
+executable hl-to-list
   hs-source-dirs:      app
-  main-is:             hl-list.hs
+  main-is:             hl-to-list.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
@@ -81,15 +81,26 @@ executable hl-list
                      , bytestring
   default-language:    Haskell2010
 
-executable hl-alltxt
+executable hl-from-alltxt
   hs-source-dirs:      app
-  main-is:             hl-alltxt.hs
+  main-is:             hl-from-alltxt.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
                      , bytestring
                      , attoparsec
+  default-language:    Haskell2010
+
+executable hl-to-csv
+  hs-source-dirs:      app
+  main-is:             hl-to-csv.hs
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , hamloghs
+                     , optparse-applicative
+                     , bytestring
+                     , stringsearch
   default-language:    Haskell2010
 
 test-suite hamloghs-test
