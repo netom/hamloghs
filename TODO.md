@@ -4,6 +4,7 @@
     * Dates
     * Times
 * Use the proper types when converting to formats that can accept and use type information (MS / Open office)
+* Clean up msoxml converter
 
 ## File formats:
 
