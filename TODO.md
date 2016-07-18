@@ -1,5 +1,10 @@
 # TODO
 
+* Add the ability to interpret and translate string data to values of proper types. Most important are:
+    * Dates
+    * Times
+* Use the proper types when converting to formats that can accept and use type information (MS / Open office)
+
 ## File formats:
 
 * ADIF
@@ -14,24 +19,5 @@
     * Mysql, Postgresql, SQLite, ...
     * Redis
     * MongoDB
-* Excel XML
 * OpenOffice / LibreOffice XML
     * Needs a template odf archive
-
-### Excel example
-
-```<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<data-set xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-    <record>
-       <LastName>Smith</LastName>
-       <Sales>16753</Sales>
-       <Country>UK</Country>
-       <Quarter>Qtr 3</Quarter>
-    </record>
-    <record>
-       <LastName>Johnson</LastName>
-       <Sales>14808</Sales>
-       <Country>USA</Country>
-       <Quarter>Qtr 4</Quarter>
-    </record>
-</data-set>```
