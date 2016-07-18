@@ -54,7 +54,7 @@ csvLine bss = B.intercalate "," (map quoteCsv bss)
 quoteCsv :: ByteString -> ByteString
 quoteCsv s = quoteOrEmpty <> quoted <> quoteOrEmpty
     where
-        quotesNeeded = any (B.null . snd) $ map (flip B.breakSubstring s) [",", "\n", "\r"]
+        quotesNeeded = any (not . B.null . snd) $ map (flip B.breakSubstring s) [",", "\n", "\r"]
         quoteOrEmpty = if quotesNeeded then "\"" else ""
         quoted = if quotesNeeded then toStrict $ S.replace "\"" ("\"\"" :: ByteString) s else s
 
