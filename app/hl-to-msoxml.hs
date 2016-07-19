@@ -29,25 +29,6 @@ getOptionsParserInfo = do
             <> progDesc "Present the contents of an ADIF file as a Microsoft Office 2003 XML spreadsheet"
       )
 
--- Return field names from an association list in their natural order.
-alFields :: (Ord a, Eq a) => [(a, b)] -> [a]
-alFields = L.nub . map fst
-
--- Return values from an association list.
--- The values will be ordered by the appeareance of their
--- field names and according to the field name list given
--- as the first argument.
--- The returned list will be as long as the field name list.
--- The values are wrapped in Maybe. A Nothing value at a position
--- means that no value was found in the association list at the
--- given position.
--- Values with field names not in the field list are ignored.
-alValues :: Eq a => [a] -> [(a, b)] -> [Maybe b]
-alValues fn al = map (flip lookup al) fn
-
-csvValues :: [Maybe ByteString] -> [ByteString]
-csvValues = map (fromMaybe "")
-
 xmlRow :: [ByteString] -> ByteString
 xmlRow bss = "      <Row>\n" <> B.concat (map xmlCell bss) <> "      </Row>\n"
 
@@ -66,9 +47,6 @@ main = getOptionsParserInfo >>= execParser >>= \opt -> do
     case parseResult of
         Left errorMsg -> putStrLn errorMsg
         Right log -> do
-            -- TODO: would it be better to just filter out tags without any data?
-            let alList = map (map (\t->(tagName t, fromMaybe "" $ tagData t)) . fromRecord) $ logRecords log
-            let fieldNames = alFields $ concat alList
             B.putStr $
                 "<?xml version=\"1.0\"?>\n" <>
                 "<?mso-application progid=\"Excel.Sheet\"?>\n" <>
@@ -109,8 +87,7 @@ main = getOptionsParserInfo >>= execParser >>= \opt -> do
                 "  <Worksheet ss:Name=\"QSOs\">\n" <>
                 "    <Table ss:ExpandedColumnCount=\"2\" ss:ExpandedRowCount=\"5\"\n" <>
                 "      x:FullColumns=\"1\" x:FullRows=\"1\">\n"
-            B.putStr $ xmlRow fieldNames
-            mapM_ (B.putStr . xmlRow . csvValues . alValues fieldNames) alList
+            mapM_ B.putStr $ map xmlRow $ qsoTable log
             B.putStr $
                 "    </Table>\n" <>
                 "    <WorksheetOptions xmlns=\"urn:schemas-microsoft-com:office:excel\">\n" <>
@@ -134,4 +111,3 @@ main = getOptionsParserInfo >>= execParser >>= \opt -> do
                 "    </WorksheetOptions>\n" <>
                 "  </Worksheet>\n" <>
                 "</Workbook>"
-

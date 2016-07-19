@@ -25,6 +25,7 @@ module HlLog
     , isTagName
     , isEOH
     , isEOR
+    , qsoTable
     ) where
 
 import Data.ByteString.Char8 (ByteString)
@@ -153,6 +154,30 @@ showTag :: Tag -> ByteString
 showTag t = case tagData t of
     Just d  -> B.concat [tagName t, "=", d]
     Nothing -> tagName t
+
+-- TODO: would it be better to just filter out tags without any data?
+qsoFieldNames :: Log -> [ByteString]
+qsoFieldNames = map head . L.group . L.sort . concat . map (map (fst . fromTag) . fromRecord) . logRecords
+
+-- Return values from an association list.
+-- The values will be ordered by the appeareance of their
+-- field names and according to the field name list given
+-- as the first argument.
+-- The returned list will be as long as the field name list.
+-- The values are wrapped in Maybe. A Nothing value at a position
+-- means that no value was found in the association list at the
+-- given position.
+-- Values with field names not in the field list are ignored.
+alValues :: Eq a => [a] -> [(a, b)] -> [Maybe b]
+alValues fn al = map (flip lookup al) fn
+
+qsoTableRow :: [ByteString] -> Record -> [ByteString]
+qsoTableRow fns = map (fromMaybe "" . (fst<$>) . join) . alValues fns . map fromTag . fromRecord
+
+qsoTable :: Log -> [[ByteString]]
+qsoTable log = fieldNames : map (qsoTableRow fieldNames) (logRecords log)
+    where
+        fieldNames = qsoFieldNames log
 
 toUpper :: ByteString -> ByteString
 toUpper = B.map CH.toUpper

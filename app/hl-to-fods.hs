@@ -29,25 +29,6 @@ getOptionsParserInfo = do
             <> progDesc "Present the contents of an ADIF file as a Microsoft Office 2003 XML spreadsheet"
       )
 
--- Return field names from an association list in their natural order.
-alFields :: (Ord a, Eq a) => [(a, b)] -> [a]
-alFields = L.nub . map fst
-
--- Return values from an association list.
--- The values will be ordered by the appeareance of their
--- field names and according to the field name list given
--- as the first argument.
--- The returned list will be as long as the field name list.
--- The values are wrapped in Maybe. A Nothing value at a position
--- means that no value was found in the association list at the
--- given position.
--- Values with field names not in the field list are ignored.
-alValues :: Eq a => [a] -> [(a, b)] -> [Maybe b]
-alValues fn al = map (flip lookup al) fn
-
-csvValues :: [Maybe ByteString] -> [ByteString]
-csvValues = map (fromMaybe "")
-
 xmlRow :: [ByteString] -> ByteString
 xmlRow bss = "    <table:table-row table:style-name=\"ro1\">\n" <> B.concat (map xmlCell bss) <> "    </table:table-row>\n"
 
@@ -66,9 +47,6 @@ main = getOptionsParserInfo >>= execParser >>= \opt -> do
     case parseResult of
         Left errorMsg -> putStrLn errorMsg
         Right log -> do
-            -- TODO: would it be better to just filter out tags without any data?
-            let alList = map (map (\t->(tagName t, fromMaybe "" $ tagData t)) . fromRecord) $ logRecords log
-            let fieldNames = alFields $ concat alList
             B.putStr $
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" <>
                 "<office:document xmlns:office=\"urn:oasis:names:tc:opendocument:xmlns:office:1.0\" xmlns:style=\"urn:oasis:names:tc:opendocument:xmlns:style:1.0\" xmlns:text=\"urn:oasis:names:tc:opendocument:xmlns:text:1.0\" xmlns:table=\"urn:oasis:names:tc:opendocument:xmlns:table:1.0\" xmlns:draw=\"urn:oasis:names:tc:opendocument:xmlns:drawing:1.0\" xmlns:fo=\"urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:meta=\"urn:oasis:names:tc:opendocument:xmlns:meta:1.0\" xmlns:number=\"urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0\" xmlns:presentation=\"urn:oasis:names:tc:opendocument:xmlns:presentation:1.0\" xmlns:svg=\"urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0\" xmlns:chart=\"urn:oasis:names:tc:opendocument:xmlns:chart:1.0\" xmlns:dr3d=\"urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0\" xmlns:math=\"http://www.w3.org/1998/Math/MathML\" xmlns:form=\"urn:oasis:names:tc:opendocument:xmlns:form:1.0\" xmlns:script=\"urn:oasis:names:tc:opendocument:xmlns:script:1.0\" xmlns:config=\"urn:oasis:names:tc:opendocument:xmlns:config:1.0\" xmlns:ooo=\"http://openoffice.org/2004/office\" xmlns:ooow=\"http://openoffice.org/2004/writer\" xmlns:oooc=\"http://openoffice.org/2004/calc\" xmlns:dom=\"http://www.w3.org/2001/xml-events\" xmlns:xforms=\"http://www.w3.org/2002/xforms\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:rpt=\"http://openoffice.org/2005/report\" xmlns:of=\"urn:oasis:names:tc:opendocument:xmlns:of:1.2\" xmlns:xhtml=\"http://www.w3.org/1999/xhtml\" xmlns:grddl=\"http://www.w3.org/2003/g/data-view#\" xmlns:tableooo=\"http://openoffice.org/2009/table\" xmlns:drawooo=\"http://openoffice.org/2010/draw\" xmlns:calcext=\"urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0\" xmlns:loext=\"urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0\" xmlns:field=\"urn:openoffice:names:experimental:ooo-ms-interop:xmlns:field:1.0\" xmlns:formx=\"urn:openoffice:names:experimental:ooxml-odf-interop:xmlns:form:1.0\" xmlns:css3t=\"http://www.w3.org/TR/css3-text/\" office:version=\"1.2\" office:mimetype=\"application/vnd.oasis.opendocument.spreadsheet\">\n" <>
@@ -182,8 +160,7 @@ main = getOptionsParserInfo >>= execParser >>= \opt -> do
                 "  <office:spreadsheet>\n" <>
                 "   <table:calculation-settings table:automatic-find-labels=\"false\"/>\n" <>
                 "   <table:table table:name=\"QSOs\" table:style-name=\"ta1\">\n"
-            B.putStr $ xmlRow fieldNames
-            mapM_ (B.putStr . xmlRow . csvValues . alValues fieldNames) alList
+            mapM_ B.putStr $ map xmlRow $ qsoTable log
             B.putStr $
                 "   </table:table>\n" <>
                 "   <table:named-expressions/>\n" <>
