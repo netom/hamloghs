@@ -141,6 +141,9 @@ showRecord r = B.intercalate " "
     [ fromMaybe "------" $ field "QSO_DATE" r
     , fromMaybe "----"   $ field "TIME_ON"  r
     , fromMaybe "------" $ field "CALL"     r
+    , fromMaybe "---"    $ field "MODE"     r
+    , fromMaybe "---" (field "BAND" r) <> "/" <> fromMaybe "---" (field "FREQ" r)
+    , fromMaybe "---" (field "RST_RCVD" r) <> "/" <> fromMaybe "---" (field "RST_SENT" r)
     ]
 
 showLog :: Log -> ByteString
