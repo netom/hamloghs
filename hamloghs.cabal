@@ -90,6 +90,8 @@ executable hl-from-alltxt
                      , optparse-applicative
                      , bytestring
                      , attoparsec
+                     , time
+                     , current-locale
   default-language:    Haskell2010
 
 executable hl-to-csv

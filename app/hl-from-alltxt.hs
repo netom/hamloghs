@@ -10,7 +10,11 @@ import System.Environment
 import System.IO hiding (readFile, putStr)
 import qualified Data.ByteString.Char8 as B
 import Data.ByteString.Char8 (ByteString)
-import Data.Attoparsec.ByteString.Char8
+import Data.Attoparsec.ByteString.Char8 as A
+import Data.Time.Calendar -- Day constructor
+import Data.Time.Format -- ParseTime class
+import System.CurrentLocale -- currentLocale
+import Data.Time.Clock
 
 data Options = Options
   { getInputHandle :: IO Handle
@@ -43,13 +47,33 @@ data AllTxtLine
         , rcvMode  :: ByteString
         , rcvTxt   :: ByteString
         }
+    | ATLTFM
+        { tfmTime :: UTCTime
+        , tfmMHz  :: Double
+        , tfmMode :: ByteString
+        }
     | ATLJunk ByteString
 
---allTxtLine :: Parser AllTxtLine
---allTxtLine = do
---    char '<'
---    return ATLRcvCQ
+allTxtLine :: A.Parser AllTxtLine
+allTxtLine = do
+    char '<'
+    return ATLRcvCQ
 
+-- Time, Mode, Frequency marker
+-- "2016-máj.-20 14:50  14.076 MHz  JT9"
+tfm :: A.Parser AllTxtLine
+tfm = do
+    dstr <- A.takeWhile (/=' ') -- Date
+    A.takeWhile (==' ')
+    tstr <- A.takeWhile (/=' ') -- Time
+    -- parseTimeM False ...
+    A.takeWhile (==' ')
+    --number ...
+    A.takeWhile (==' ')
+    A.string "Mhz"
+    A.takeWhile (==' ')
+    --mode ...
+    return $ ATLTFM (UTCTime (ModifiedJulianDay 0) (secondsToDiffTime 0)) 0 "JT65"
 
 getOptionsParserInfo :: IO (ParserInfo Options)
 getOptionsParserInfo = do
