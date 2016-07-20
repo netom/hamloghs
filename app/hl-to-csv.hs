@@ -17,6 +17,9 @@ import Data.ByteString.Lazy (fromStrict, toStrict)
 
 data Options = Options
   { getInputHandle :: IO Handle
+  , separatorChar  :: Char
+  , quoteChar      :: Char
+  , escapeChar     :: Char
   }
 
 getOptionsParserInfo :: IO (ParserInfo Options)
@@ -24,20 +27,29 @@ getOptionsParserInfo = do
     return $ info (helper <*> (
         Options
             <$> inputHandleArgument
+            <*> separatorOption
+            <*> quoteOption
+            <*> escapeOption
       )) (
         fullDesc
-            <> progDesc "Present an ADIF file as CSV"
+            <> progDesc "Present an ADIF file as CSV, or similar character-separated, quoted-escaped format"
       )
 
-csvLine :: [ByteString] -> ByteString
-csvLine bss = B.intercalate "," (map quoteCsv bss)
+csvLine :: Char -> Char -> Char -> [ByteString] -> ByteString
+csvLine sep quot esc bss = B.intercalate (B.singleton sep) (map (quoteCsv sep quot esc) bss)
 
-quoteCsv :: ByteString -> ByteString
-quoteCsv s = quoteOrEmpty <> quoted <> quoteOrEmpty
+quoteCsv :: Char -> Char -> Char -> ByteString -> ByteString
+quoteCsv sep quot esc s = quoteOrEmpty <> quoted <> quoteOrEmpty
     where
-        quotesNeeded = any (not . B.null . snd) $ map (flip B.breakSubstring s) [",", "\n", "\r"]
-        quoteOrEmpty = if quotesNeeded then "\"" else ""
-        quoted = if quotesNeeded then toStrict $ S.replace "\"" ("\"\"" :: ByteString) s else s
+        quotesNeeded = any (not . B.null . snd) $ map (flip B.breakSubstring s) [B.singleton sep, "\n", "\r"]
+        quoteOrEmpty = if quotesNeeded then B.singleton quot else ""
+        quoted = 
+            if quotesNeeded then
+                toStrict $ S.replace (B.singleton esc) (B.pack [esc, esc]) $
+                if quot /= esc then
+                    toStrict $ S.replace (B.singleton quot) (B.pack [esc, quot]) s
+                else s
+            else s
 
 main :: IO ()
 main = getOptionsParserInfo >>= execParser >>= \opt -> do
@@ -46,4 +58,4 @@ main = getOptionsParserInfo >>= execParser >>= \opt -> do
 
     case parseResult of
         Left errorMsg -> putStrLn errorMsg
-        Right log -> mapM_ B.putStrLn $ map csvLine $ qsoTable log
+        Right log -> mapM_ B.putStrLn $ map (csvLine (separatorChar opt) (quoteChar opt) (escapeChar opt)) $ qsoTable log

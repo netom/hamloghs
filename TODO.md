@@ -1,5 +1,6 @@
 # TODO
 
+* Handle application specific tags correctly in ADX output
 * Add the ability to interpret and translate string data to values of proper types. Most important are:
     * Dates
     * Times
@@ -9,15 +10,5 @@
 
 ## File formats:
 
-* ADIF
-    * ADX
 * Cabrillo
 * EDI
-* CSV (SCSV, TSV, ...)
-    * Separator, quote, header
-* Protobuf
-* BSON
-* Persistent
-    * Mysql, Postgresql, SQLite, ...
-    * Redis
-    * MongoDB

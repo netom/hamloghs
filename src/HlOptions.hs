@@ -1,10 +1,12 @@
 module HlOptions
     ( getHomeOption
-    , outputFormatOption
     , OutputFormat (..)
     , adifRecordArguments
     , inputFileArguments
     , inputHandleArgument
+    , separatorOption
+    , quoteOption
+    , escapeOption
     ) where
 
 import Data.Maybe
@@ -25,7 +27,9 @@ parseAdifRecord s = do
         return $ toTag (B.pack $ fst t) (Just $ BU.fromString $ drop 1 $ snd t) Nothing
     else return $ toTag (B.pack s) Nothing Nothing
 
---parseInputFile :: Monad m => 
+parseChar :: Monad m => String -> m Char
+parseChar (c:[]) = return c
+parseChar _    = fail "A single character must be given."
 
 adifRecordArguments :: Parser [Tag]
 adifRecordArguments = some (argument (str >>= parseAdifRecord) (metavar "FIELDS..."))
@@ -46,9 +50,26 @@ getHomeOption = do
      <> metavar "HL_HOME"
      <> help "The root directory of the application data, i.e. where your log is stored."
 
-outputFormatOption = option auto
-    $ long "output-format"
-   <> short 'o'
-   <> value ADIF
-   <> metavar "HL_OUTPUT_FORMAT"
-   <> help "Output format. One of ADIF, LIST"
+separatorOption :: Parser Char
+separatorOption = option (str >>= parseChar)
+    $ long "separator"
+   <> short 's'
+   <> value ','
+   <> metavar "SEPARATOR"
+   <> help "This character will be used to separate values in the output. Defaults to a comma."
+
+quoteOption :: Parser Char
+quoteOption = option (str >>= parseChar)
+    $ long "quote"
+   <> short 'q'
+   <> value '"'
+   <> metavar "QUOTE"
+   <> help "Use this character to enclose values if the separator, carriage return, or linefeed appears in them. Default is a double quote."
+
+escapeOption :: Parser Char
+escapeOption = option (str >>= parseChar)
+    $ long "escape"
+   <> short 'e'
+   <> value '"'
+   <> metavar "ESCAPE"
+   <> help "This character will appear in a quoted value before any quote characters that appear in it. Quote characters appearing in the value are duplicated. Default is double quote."

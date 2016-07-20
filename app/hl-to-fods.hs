@@ -26,7 +26,7 @@ getOptionsParserInfo = do
             <$> inputHandleArgument
       )) (
         fullDesc
-            <> progDesc "Present the contents of an ADIF file as a Microsoft Office 2003 XML spreadsheet"
+            <> progDesc "Present the contents of an ADIF file as a Flat Open Document Spreadsheet."
       )
 
 xmlRow :: [ByteString] -> ByteString
