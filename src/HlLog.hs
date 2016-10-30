@@ -26,6 +26,7 @@ module HlLog
     , isEOH
     , isEOR
     , qsoTable
+    , vectorsToTags
     ) where
 
 import Data.ByteString.Char8 (ByteString)
@@ -37,6 +38,7 @@ import qualified Data.List as L
 import Data.Maybe
 import qualified Data.Char as CH
 import Data.Monoid
+import qualified Data.Vector as V
 
 -- A Tag is the ADIF representation of piece of data or metadata,
 -- e.g. a field of a record (Other), or the end of header / end
@@ -81,7 +83,7 @@ tagData :: Tag -> Maybe ByteString
 tagData =  (<$>) fst . snd . fromTag
 
 tagDataLength :: Tag -> Maybe Int
-tagDataLength = (<$>) B.length . tagData
+tagDataLength = (<$>) (fromIntegral . B.length) . tagData
 
 tagDataType :: Tag -> Maybe ByteString
 tagDataType = join . (<$>) snd . snd . fromTag
@@ -181,3 +183,7 @@ qsoTable log = fieldNames : map (qsoTableRow fieldNames) (logRecords log)
 
 toUpper :: ByteString -> ByteString
 toUpper = B.map CH.toUpper
+
+-- Use a name and a value vector to build
+vectorsToTags :: V.Vector ByteString -> V.Vector ByteString -> [Tag]
+vectorsToTags ns vs = V.toList $ V.map (\(n, v) -> toTag n (Just v) Nothing) $ V.zip ns vs

@@ -56,7 +56,7 @@ separatorOption = option (str >>= parseChar)
    <> short 's'
    <> value ','
    <> metavar "SEPARATOR"
-   <> help "This character will be used to separate values in the output. Defaults to a comma."
+   <> help "This character separates values in the CSV file. Defaults to a comma."
 
 quoteOption :: Parser Char
 quoteOption = option (str >>= parseChar)
@@ -64,7 +64,7 @@ quoteOption = option (str >>= parseChar)
    <> short 'q'
    <> value '"'
    <> metavar "QUOTE"
-   <> help "Use this character to enclose values if the separator, carriage return, or linefeed appears in them. Default is a double quote."
+   <> help "This character encloses values if the separator, carriage return, or linefeed appears in them. Default is a double quote."
 
 escapeOption :: Parser Char
 escapeOption = option (str >>= parseChar)
@@ -72,4 +72,4 @@ escapeOption = option (str >>= parseChar)
    <> short 'e'
    <> value '"'
    <> metavar "ESCAPE"
-   <> help "This character will appear in a quoted value before any quote characters that appear in it. Quote characters appearing in the value are duplicated. Default is double quote."
+   <> help "This character appears in a quoted value before any quote characters that appear in it. Quote characters appearing in the value are duplicated. Default is double quote."

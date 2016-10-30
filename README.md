@@ -35,8 +35,8 @@ This is the secondary goal.
 
 ### Why?
 
-No program is perfect. Never will. HamLogHS is no exception. Since the ADIF file format is so pervasive, it was choosen as
-the disk format and the "pipe format" - the way programs store, organicze and communicate data.
+No program is perfect. Never will be. HamLogHS is no exception. Since the ADIF file format is so pervasive, it was choosen as
+the disk format and the "pipe format" - the way programs store, organize and communicate data.
 
 I admit I *hate* ADIF format with a passion. (To see why, see my blog article "Musings on the ADIF file format": )
 
