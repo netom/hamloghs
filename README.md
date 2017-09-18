@@ -7,7 +7,7 @@ A Ham radio logger written in Haskell.
 HamLogHS is a set of command-line tools to manage amateur radio station logs.
 
 The feature set of the few basic executables are stable enough to start experimenting with it, but BE VERY CAREFUL, as the 
-application does not have any test yet, and nor I, nor anyone can every guarantee that it won't cause a horrible and 
+application does not have any test yet, and nor I, nor anyone else can ever guarantee it won't cause horrible and 
 unrecoverable data loss.
 
 ***USE IT ONLY ON YOUR OWN RESPONSIBILITY***
@@ -38,7 +38,8 @@ This is the secondary goal.
 No program is perfect. Never will be. HamLogHS is no exception. Since the ADIF file format is so pervasive, it was choosen as
 the disk format and the "pipe format" - the way programs store, organize and communicate data.
 
-I admit I *hate* ADIF format with a passion. (To see why, see my blog article "Musings on the ADIF file format": )
+I admit I *hate* ADIF format with a passion. (To see why, see my blog article "Musings on the ADIF file format":
+http://tlfabian.blogspot.hu/2016/07/musings-on-adif-file-format.html)
 
 ## Development strategy: *Do one thing, do it well*
 
