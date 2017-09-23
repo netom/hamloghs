@@ -14,6 +14,7 @@ import Text.Printf
 import GHC.Int
 import qualified Data.ByteString.Char8 as B
 import Data.ByteString.Lazy (fromStrict)
+import Data.Semigroup ((<>))
 
 data Options = Options
   { getInputHandle :: IO Handle

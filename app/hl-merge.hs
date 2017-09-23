@@ -5,6 +5,7 @@ import HlLog
 import HlOptions
 import Options.Applicative
 import qualified Data.ByteString.Char8 as B
+import Data.Semigroup ((<>))
 
 data Options = Options
   { files :: [String]

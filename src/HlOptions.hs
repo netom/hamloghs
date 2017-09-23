@@ -17,6 +17,7 @@ import Options.Applicative
 import System.Directory
 import System.Environment
 import System.IO
+import Data.Semigroup ((<>))
 
 data OutputFormat = ADIF | LIST deriving (Read)
 

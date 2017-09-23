@@ -9,6 +9,7 @@ import Prelude hiding (readFile, putStr)
 import System.Environment
 import System.IO hiding (readFile, putStr)
 import qualified Data.ByteString.Char8 as B
+import Data.Semigroup ((<>))
 
 data Options = Options
   { basedir :: String
