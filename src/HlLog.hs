@@ -150,7 +150,7 @@ showRecord r = B.intercalate " "
     ]
 
 showLog :: Log -> ByteString
-showLog (Log htxt htags recs) =  B.intercalate "\n" $ map showRecord recs
+showLog (Log htxt htags recs) =  B.intercalate "\n" $ map (\(n, r) -> B.pack (show n) <> " " <> r) $ zip [1..] $ map showRecord recs
 
 showTag :: Tag -> ByteString
 showTag t = case tagData t of
