@@ -1,97 +1,105 @@
 # HamLogHS
 
-A Ham radio logger written in Haskell.
+Amateur radio station log management software written in Haskell.
 
 ## What is this?
 
-HamLogHS is a set of command-line tools to manage amateur radio station logs.
+HamLogHS is a set of command-line tools to manage amateur radio station 
+logs.
 
-The feature set of the few basic executables are stable enough to start experimenting with it, but BE VERY CAREFUL, as the 
-application does not have any test yet, and nor I, nor anyone else can ever guarantee it won't cause horrible and 
+The feature set of the executables are stable enough to be useful, but 
+BE VERY CAREFUL, as the application does not have any tests yet, and 
+nor I, nor anyone else can ever guarantee it won't cause horrible and 
 unrecoverable data loss.
 
 ***USE IT ONLY ON YOUR OWN RESPONSIBILITY***
 
 ## Project outline
 
-### TODO
-
-There is really a *lot* of thigs to be done. For an immediate list of how you can help, see TODO.md.
-
 ### Data storage & transfer
 
-HamLogHS tools all use the standard ADIF (ADI) format to store and transfer data. These logs can be imported / exported using 
-various logger applications and websites like LotW.arrl.org, QRZ.com, eQSL.cc, and ClubLog.org.
+HamLogHS tools use the standard ADIF (ADI) format to store and transfer 
+data. These logs can be imported / exported using various logger 
+applications and websites like LotW.arrl.org, QRZ.com, eQSL.cc, and 
+ClubLog.org.
 
-The programs should be suitable for use by hand, or by graphical or command-line front-ends.
-
-The most important goal is to provide such binaries.
-
-### Library
-
-HamLogHS will - at some distant point in time - will provide libraries to read and write ADIF data.
-
-This is the secondary goal.
-
-### Why?
-
-No program is perfect. Never will be. HamLogHS is no exception. Since the ADIF file format is so pervasive, it was choosen as
-the disk format and the "pipe format" - the way programs store, organize and communicate data.
-
-I admit I *hate* ADIF format with a passion. (To see why, see my blog article "Musings on the ADIF file format":
-http://tlfabian.blogspot.hu/2016/07/musings-on-adif-file-format.html)
-
-## Development strategy: *Do one thing, do it well*
-
-* The aim of the project is to develop a set of tools each a with narrow featureset.
-* The main theme is data file reading / writing in different formats
-  * Filtering, record manipulation and aggregation also important
-* The tools "speak" the same format: ADIF (ADI)
-  * ADIF is an ugly format, but it's currently widely supported, hence the choice.
-* The tools might be piped together to perform complicated tasks, for example:
-  * Export the qso-s in the last 48 hours that affect the grids not contacted last year, and are futher away than 1000 kilometers.
-  * List unconfirmed contacts counting towards my DXCC award
-* The tools accept command-line arguments, and can parse environment variables. Config file parsing is not included.
+The programs should be suitable for use by hand, or by graphical or 
+command-line front-ends.
 
 See TODO.md for immediate plans.
 
-## Planned tools
+### Why?
 
-* Creating records
-  * HL_T_MY_GRIDSQUARE=JN97mm hl-record --mode SSB --rst-rcvd 59 --rst-sent 56 --call OM2ZJQ >> log.adi
-* Merging / splitting logs stored in a directory tree, partitioned on date
-  * cat log.adi | hl-import -d my_log_dir
-  * hl-export -d my_log_dir --from-date=yesterday --to-date=now
-  * hl-merge to_import.adi my_other_log.adi > merged_log.adi
-* Read/write various formats
-  * hl-read-adx, hd-write-adx
-  * Excel XML
-  * ODF spreadsheet
-  * Protobuf
-  * BSON
-  * JSON
-  * YAML
-  * CSV / TSV
-  * Haskell persistent compatible database
-    * MySQL
-    * Postgresql
-    * SQLite
-    * Redis
-    * MongoDB
-* Filtering
-  * cat log.adi | hl-filter
-  * Match on:
-    * Equality
-    * Range
-    * Regular expression
-* Checking / validating logs
-  * hl-check < log.adi
-    * Runs various checks including possible duplicates, certain file format errors
-  * hl-rescue
-    * Should be able to retrieve ADIF records from crashed hard drive images in reasonable time
-* Various low-level tools
-  * take
-  * drop
-  * takewhile
-  * dropwhile
-  * ... ?
+No program is perfect. Never will be. HamLogHS is no exception. Since 
+the ADIF file format is so pervasive, it was choosen as the disk format 
+and the "pipe format" - the way programs store, organize and 
+communicate data.
+
+## Development strategy: *Do one thing, do it well*
+
+The aim of the project is to develop a set of tools each a with 
+narrow featureset such as filtering and record manipulation.
+
+The tools "speak" the same format: ADIF (ADI) ADIF is an ugly format, 
+but it's currently widely supported, hence the choice.
+
+The tools might be piped together to perform complicated tasks.
+
+## Tools
+
+The hl-export and hl-import commands operate on a *database*, an ADIF 
+file located at ~/.hl/data/hl.adi by default. This location can be 
+changed by using the --home option, or $HL_HOME environment variable.
+
+### hl-export
+
+Export the ADIF database to a single file.
+
+### hl-filter
+
+Output ADIF records matching the given filter expressions.
+
+### hl-from-csv
+
+Converts a CSV file to ADIF. Tag names must be given as column headers.
+
+### hl-import
+
+Reads ADIF files and merges them into the database.
+
+### hl-merge
+
+Merges multiple ADIF files into a single one. Tries to avoid 
+duplication. Similar records are merged so the most data is kept. (I.e. 
+it intends to do merging *the right way*). This merging logic is used
+in hl-import too.
+
+### hl-record
+
+Creates an ADIF record from command-line arguments and environmental 
+variables.
+
+This may be used to implement simple command-line loggers. An example
+can be seen in bash/.hlrc.
+
+### hl-to-adx
+
+Converts ADIF files to ADX.
+
+### hl-to-csv
+
+Converts ADIF files to CSV.
+
+### hl-to-fods
+
+Converts ADIF files to OpenDocument spreadsheets. This format is used 
+by OpenOffice and LibreOffice and a few other office suites.
+
+### hl-to-list
+
+Writes a shors summary of each record in an ADIF file. Great for 
+quickly inspecting your station log, one record on each line.
+
+### hl-to-msoxml
+
+Converts ADIF files to Microsoft Office XML format.

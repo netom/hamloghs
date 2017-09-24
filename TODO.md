@@ -1,5 +1,6 @@
 # TODO
 
+* Proper documentation
 * Handle application specific tags correctly in ADX output
 * Add the ability to interpret and translate string data to values of proper types. Most important are:
     * Dates
@@ -7,8 +8,4 @@
     * Numbers
 * Infer BAND automatically from FREQ
 * Use the proper types when converting to formats that can accept and use type information (MS / Open office)
-
-## File formats:
-
-* Cabrillo
-* EDI
+* Filter by record serial number
