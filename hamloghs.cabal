@@ -148,6 +148,7 @@ executable hl-filter
                      , hamloghs
                      , optparse-applicative
                      , bytestring
+                     , regex-tdfa
   default-language:    Haskell2010
 
 test-suite hamloghs-test

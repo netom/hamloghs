@@ -1,17 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module HlLog
-    ( Tag
-    , Record
-    , Log
+    ( Tag (..)
+    , Record (..)
+    , Log (..)
     , toTag
     , toRecord
     , toLog
-    , fromRecord
     , records
-    , logHeaderTxt
-    , logHeaderTags
-    , logRecords
     , mergeLogs
     , mergeTags
     , tagName
