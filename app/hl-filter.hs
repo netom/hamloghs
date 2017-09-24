@@ -26,21 +26,20 @@ optionsParserInfo = info (helper <*> (
             <> progDesc "Filter ADIF records according to filter expressions"
       )
 
-parseErrorHandler :: Either String Log -> IO Log
-parseErrorHandler (Left errorMessage) = fail errorMessage
-parseErrorHandler (Right log) = return log
-
 tagMatches :: FlExp -> Tag -> Bool
-tagMatches (FlExp ftname flop ftvalue) (CTag (tname, Just (tvalue, _))) =
-    ftname == tname &&
-    case flop of
-        FlGt  -> tvalue >  ftvalue
-        FlGte -> tvalue >= ftvalue
-        FlLt  -> tvalue <  ftvalue
-        FlLte -> tvalue <= ftvalue
-        FlEq  -> tvalue == ftvalue
-        FlNeq -> tvalue /= ftvalue
-        FlReg -> tvalue == ftvalue -- TODO: match regular expression
+tagMatches exp (CTag (tname, Just (tvalue, _))) =
+    case exp of
+        FlGte ftname fvalue -> ftname == tname && tvalue >= fvalue
+        FlGt  ftname fvalue -> ftname == tname && tvalue >  fvalue
+        FlLte ftname fvalue -> ftname == tname && tvalue <= fvalue
+        FlLt  ftname fvalue -> ftname == tname && tvalue <  fvalue
+        FlReg ftname fregex -> ftname == tname &&
+            case execute fregex tvalue of
+                Right (Just _) -> True
+                otherwise      -> False
+        FlEq  ftname fvalue -> ftname == tname && tvalue == fvalue
+        FlNeq ftname fvalue -> ftname == tname && tvalue /= fvalue
+        FlEx  ftname -> ftname == tname
 
 recordMatches :: FlExp -> Record -> Bool
 recordMatches exp (CRecord ts) = any (tagMatches exp) ts

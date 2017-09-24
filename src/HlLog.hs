@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module HlLog
-    ( Tag (..)
+    ( TagName
+    , Tag (..)
     , Record (..)
     , Log (..)
     , toTag
@@ -36,6 +37,8 @@ import qualified Data.Char as CH
 import Data.Monoid
 import qualified Data.Vector as V
 
+type TagName = ByteString
+
 -- A Tag is the ADIF representation of piece of data or metadata,
 -- e.g. a field of a record (Other), or the end of header / end
 -- of record marks.
@@ -43,7 +46,7 @@ import qualified Data.Vector as V
 -- <TAGNAME:4>data some extra data including the space after "data"
 --
 -- (  Tag name,  Maybe ( Actual data, Maybe data type )  )
-newtype Tag = CTag { fromTag :: (ByteString, Maybe (ByteString, Maybe ByteString)) }
+newtype Tag = CTag { fromTag :: (TagName, Maybe (ByteString, Maybe ByteString)) }
 
 tMap :: (ByteString -> ByteString) -> Tag -> Tag
 tMap _ t@(CTag (_, Nothing)) = t

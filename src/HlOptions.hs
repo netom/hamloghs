@@ -3,7 +3,6 @@ module HlOptions
     ( getHomeOption
     , OutputFormat (..)
     , FlExp (..)
-    , FlOp (..)
     , adifRecordArguments
     , inputFileArguments
     , inputHandleArgument
@@ -25,19 +24,20 @@ import System.Environment
 import System.IO
 import Data.Semigroup ((<>))
 import qualified Data.Attoparsec.ByteString.Char8 as AP
+import Text.Regex.Base.RegexLike
+import Text.Regex.TDFA.ByteString
 
 data OutputFormat = ADIF | LIST deriving (Read)
 
-data FlOp
-    = FlGte
-    | FlGt
-    | FlLte
-    | FlLt
-    | FlReg
-    | FlEq
-    | FlNeq
-
-data FlExp = FlExp ByteString FlOp ByteString
+data FlExp
+    = FlGte TagName ByteString
+    | FlGt  TagName ByteString
+    | FlLte TagName ByteString
+    | FlLt  TagName ByteString
+    | FlReg TagName Regex
+    | FlEq  TagName ByteString
+    | FlNeq TagName ByteString
+    | FlEx  TagName
 
 parseAdifRecord :: Monad m => String -> m Tag
 parseAdifRecord s = do
@@ -95,25 +95,28 @@ escapeOption = option (str >>= parseChar)
 
 -- the ap* functions are parsers written with AttoParsec
 
-apParseFlExpLeft :: AP.Parser ByteString
-apParseFlExpLeft = B.pack <$> AP.many1' (AP.letter_ascii <|> AP.digit <|> AP.char '_') <|> fail "A valid tag name must be given"
+apParseTagName :: AP.Parser ByteString
+apParseTagName = B.pack <$> AP.many1' (AP.letter_ascii <|> AP.digit <|> AP.char '_') <|> fail "A valid tag name must be given"
 
-apParseFlOp :: AP.Parser FlOp
-apParseFlOp
-      = ( AP.string ">=" >> return FlGte )
-    <|> ( AP.string ">"  >> return FlGt  )
-    <|> ( AP.string "<=" >> return FlLte )
-    <|> ( AP.string "<"  >> return FlLt  )
-    <|> ( AP.string "=~" >> return FlReg )
-    <|> ( AP.string "="  >> return FlEq  )
-    <|> ( AP.string "!=" >> return FlNeq )
-    <|> fail "Missing or unsupported operator"
+apParseFlValue :: AP.Parser ByteString
+apParseFlValue = AP.takeByteString
 
-apParseFlExpRight :: AP.Parser ByteString
-apParseFlExpRight = AP.takeByteString
+runEither :: Monad m => Either String a -> m a
+runEither e =
+    case e of
+    Right x -> return x
+    Left s  -> fail s
 
 apParseFlExp :: AP.Parser FlExp
-apParseFlExp = FlExp <$> apParseFlExpLeft <*> apParseFlOp <*> apParseFlExpRight
+apParseFlExp
+      = ( FlGte <$> apParseTagName <*> ( (AP.string ">=") >> apParseFlValue ) )
+    <|> ( FlGt  <$> apParseTagName <*> ( (AP.string ">" ) >> apParseFlValue ) )
+    <|> ( FlLte <$> apParseTagName <*> ( (AP.string "<=") >> apParseFlValue ) )
+    <|> ( FlLt  <$> apParseTagName <*> ( (AP.string "<" ) >> apParseFlValue ) )
+    <|> ( FlReg <$> apParseTagName <*> ( (AP.string "=~") >> (apParseFlValue >>= runEither . compile defaultCompOpt defaultExecOpt) ) )
+    <|> ( FlEq  <$> apParseTagName <*> ( (AP.string "=" ) >> apParseFlValue ) )
+    <|> ( FlNeq <$> apParseTagName <*> ( (AP.string "!=") >> apParseFlValue ) )
+    <|> ( AP.string "*" >> FlEx <$> apParseTagName )
 
 parseFlExp :: Monad m => String -> m FlExp
 parseFlExp s =

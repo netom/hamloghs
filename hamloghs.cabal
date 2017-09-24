@@ -27,6 +27,8 @@ library
                      , mtl
                      , split
                      , vector
+                     , regex-base
+                     , regex-tdfa
   default-language:    Haskell2010
 
 executable hl-import
