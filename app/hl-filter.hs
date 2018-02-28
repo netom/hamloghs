@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
-import Data.ByteString.Char8 (ByteString)
+--import Data.ByteString.Char8 (ByteString)
 import HlAdif
 import HlLog
 import HlOptions
@@ -27,22 +27,28 @@ optionsParserInfo = info (helper <*> (
       )
 
 tagMatches :: FlExp -> Tag -> Bool
-tagMatches exp (CTag (tname, Just (tvalue, _))) =
-    case exp of
-        FlGte ftname fvalue -> ftname == tname && tvalue >= fvalue
-        FlGt  ftname fvalue -> ftname == tname && tvalue >  fvalue
-        FlLte ftname fvalue -> ftname == tname && tvalue <= fvalue
-        FlLt  ftname fvalue -> ftname == tname && tvalue <  fvalue
-        FlReg ftname fregex -> ftname == tname &&
-            case execute fregex tvalue of
-                Right (Just _) -> True
-                otherwise      -> False
-        FlEq  ftname fvalue -> ftname == tname && tvalue == fvalue
-        FlNeq ftname fvalue -> ftname == tname && tvalue /= fvalue
-        FlEx  ftname -> ftname == tname
+tagMatches expr (CTag (tname, mbtval)) =
+    case expr of
+        FlEx ftname -> ftname == tname
+        otherexpr ->
+            case mbtval of
+                Nothing -> False
+                Just (tvalue, _) ->
+                    case otherexpr of
+                        FlGte ftname fvalue -> ftname == tname && tvalue >= fvalue
+                        FlGt  ftname fvalue -> ftname == tname && tvalue >  fvalue
+                        FlLte ftname fvalue -> ftname == tname && tvalue <= fvalue
+                        FlLt  ftname fvalue -> ftname == tname && tvalue <  fvalue
+                        FlReg ftname fregex -> ftname == tname &&
+                            case execute fregex tvalue of
+                                Right (Just _) -> True
+                                _              -> False
+                        FlEq  ftname fvalue -> ftname == tname && tvalue == fvalue
+                        FlNeq ftname fvalue -> ftname == tname && tvalue /= fvalue
+                        _ -> False
 
 recordMatches :: FlExp -> Record -> Bool
-recordMatches exp (CRecord ts) = any (tagMatches exp) ts
+recordMatches expr (CRecord ts) = any (tagMatches expr) ts
 
 filterLog :: [FlExp] -> Log -> Log
 filterLog flexps Log{..} = Log logHeaderTxt logHeaderTags $ filter (\rec -> any (flip recordMatches rec) flexps) logRecords
@@ -53,7 +59,7 @@ doFilterLog opt = do
 
     case parseResult of
         Left errorMsg -> putStrLn errorMsg
-        Right log -> B.putStr $ writeLog $ filterLog (flexps opt) log
+        Right l -> B.putStr $ writeLog $ filterLog (flexps opt) l
 
     return ()
 
