@@ -1,19 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Data.Maybe
 import HlLog
 import HlAdif
 import HlOptions
 import Options.Applicative
 import Prelude hiding (readFile, putStr)
-import System.Environment
 import System.IO hiding (readFile, putStr)
 import qualified Data.ByteString.Char8 as B
 import Data.ByteString.Char8 (ByteString)
-import qualified Data.List as L
 import qualified Data.ByteString.Search as S
-import Data.ByteString.Lazy (fromStrict, toStrict)
+import Data.ByteString.Lazy (toStrict)
 import Data.Semigroup ((<>))
 
 data Options = Options
@@ -38,7 +35,7 @@ xmlCell s = "        <Cell><Data ss:Type=\"String\">" <> escaped <> "</Data></Ce
     where
         escaped = foldl escape s [("&", "&amp;"), ("\"", "&quot;"), ("'", "&apos;"), ("<", "&lt;"), (">", "&gt;")]
         escape :: ByteString -> (ByteString, ByteString) -> ByteString
-        escape s (toS, toR) = toStrict $ S.replace toS toR s
+        escape bs (toS, toR) = toStrict $ S.replace toS toR bs
 
 main :: IO ()
 main = getOptionsParserInfo >>= execParser >>= \opt -> do
@@ -47,7 +44,7 @@ main = getOptionsParserInfo >>= execParser >>= \opt -> do
 
     case parseResult of
         Left errorMsg -> putStrLn errorMsg
-        Right log -> do
+        Right l -> do
             B.putStr $
                 "<?xml version=\"1.0\"?>\n" <>
                 "<?mso-application progid=\"Excel.Sheet\"?>\n" <>
@@ -88,7 +85,7 @@ main = getOptionsParserInfo >>= execParser >>= \opt -> do
                 "  <Worksheet ss:Name=\"QSOs\">\n" <>
                 "    <Table ss:ExpandedColumnCount=\"2\" ss:ExpandedRowCount=\"5\"\n" <>
                 "      x:FullColumns=\"1\" x:FullRows=\"1\">\n"
-            mapM_ B.putStr $ map xmlRow $ qsoTable log
+            mapM_ B.putStr $ map xmlRow $ qsoTable l
             B.putStr $
                 "    </Table>\n" <>
                 "    <WorksheetOptions xmlns=\"urn:schemas-microsoft-com:office:excel\">\n" <>

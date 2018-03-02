@@ -6,7 +6,6 @@ import HlOptions
 import Options.Applicative
 import System.Directory
 import System.IO
-import System.IO.Temp
 import qualified Data.ByteString.Char8 as B
 import Data.Semigroup ((<>))
 
@@ -29,7 +28,7 @@ getOptionsParserInfo = do
 
 parseErrorHandler :: Either String Log -> IO Log
 parseErrorHandler (Left errorMessage) = fail errorMessage
-parseErrorHandler (Right log) = return log
+parseErrorHandler (Right l) = return l
 
 doImport :: Options -> IO ()
 doImport opt = do
@@ -43,7 +42,7 @@ doImport opt = do
     (writeLog <$> mergeLogs <$> mapM (parseErrorHandler . adifLogParser) contentList) >>= B.hPutStr tmph
 
     hClose tmph
-    mapM hClose handleList
+    mapM_ hClose handleList
 
     renameFile tmpn $ basedir opt ++ "/data/hl.adi"
 

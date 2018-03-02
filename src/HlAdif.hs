@@ -9,47 +9,43 @@ module HlAdif
 
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8
-import Data.Char
-import qualified Data.List as L
 import Data.Maybe
 import Data.Monoid
 import Data.String
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Char8 as B
-import qualified Data.List.Split as S
 import HlLog
 import Prelude hiding (take, takeWhile)
 
-hamlogHsHeaderTxt = "Created by hl - HamlogHS: the Ham Radio Logger written in Haskell\n"
-
 parseTag :: Parser Tag
 parseTag = do
-    char '<'
+    _ <- char '<'
     tName <- takeWhile (\x -> x /= ':' && x /= '>')
     n1 <- peekChar
 
     (tDataType, tData) <- case n1 of
         Nothing  -> fail "Unexpected end of tag"
         Just ':' -> do
-            take 1 -- Drop :
-            length <- decimal
+            _ <- take 1 -- Drop :
+            len <- decimal
             n2 <- peekChar
             tDataType <- case n2 of
                 Nothing  -> fail "Uexpected end of tag"
                 Just ':' -> do
-                    take 1 -- Drop :
+                    _ <- take 1 -- Drop :
                     Just <$> takeWhile (/='>')
                 Just '>' -> do
                     return Nothing
                 Just c   -> fail $ "Unexpected character: " ++ [c]
-            take 1 -- Drop >
-            tData <- Just <$> take length
+            _ <- take 1 -- Drop >
+            tData <- Just <$> take len
             return (tDataType, tData)
         Just '>' -> do
-            take 1 -- Drop >
+            _ <- take 1 -- Drop >
             return (Nothing, Nothing)
+        Just c   -> fail $ "Unexpected character: " ++ [c]
 
-    takeWhile (/='<') -- Drop extra characters after useful data
+    _ <- takeWhile (/='<') -- Drop extra characters after useful data
 
     return $ toTag tName tData tDataType
 
@@ -78,9 +74,9 @@ writeRecord :: Record -> ByteString
 writeRecord r = B.intercalate "\n" (map writeTag $ fromRecord r) <> "\n<EOR>\n"
 
 writeLog :: Log -> ByteString
-writeLog log =
-    B.concat [ logHeaderTxt log
-             , B.intercalate "\n" $ map writeTag $ logHeaderTags log
+writeLog l =
+    B.concat [ logHeaderTxt l
+             , B.intercalate "\n" $ map writeTag $ logHeaderTags l
              , "<EOH>\n"
-             , B.concat $ map writeRecord $ logRecords log
+             , B.concat $ map writeRecord $ logRecords l
              ]

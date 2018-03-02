@@ -90,7 +90,10 @@ tagDataType = join . (<$>) snd . snd . fromTag
 isTagName :: ByteString -> Tag -> Bool
 isTagName = flip $ (==) . tagName
 
+isEOR :: Tag -> Bool
 isEOR = isTagName "EOR"
+
+isEOH :: Tag -> Bool
 isEOH = isTagName "EOH"
 
 -- A record is just a list of tags
@@ -149,7 +152,7 @@ showRecord r = B.intercalate " "
     ]
 
 showLog :: Log -> ByteString
-showLog (Log htxt htags recs) =  B.intercalate "\n" $ map (\(n, r) -> B.pack (show n) <> " " <> r) $ zip [1..] $ map showRecord recs
+showLog (Log _ _ recs) =  B.intercalate "\n" $ map (\(n, r) -> B.pack (show n) <> " " <> r) $ zip [(1::Int)..] $ map showRecord recs
 
 showTag :: Tag -> ByteString
 showTag t = case tagData t of
@@ -176,9 +179,9 @@ qsoTableRow :: [ByteString] -> Record -> [ByteString]
 qsoTableRow fns = map (fromMaybe "" . (fst<$>) . join) . alValues fns . map fromTag . fromRecord
 
 qsoTable :: Log -> [[ByteString]]
-qsoTable log = fieldNames : map (qsoTableRow fieldNames) (logRecords log)
+qsoTable l = fieldNames : map (qsoTableRow fieldNames) (logRecords l)
     where
-        fieldNames = qsoFieldNames log
+        fieldNames = qsoFieldNames l
 
 toUpper :: ByteString -> ByteString
 toUpper = B.map CH.toUpper

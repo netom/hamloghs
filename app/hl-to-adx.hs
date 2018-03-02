@@ -7,13 +7,11 @@ import HlAdif
 import HlOptions
 import Options.Applicative
 import Prelude hiding (readFile, putStr)
-import System.Environment
 import System.IO hiding (readFile, putStr)
 import qualified Data.ByteString.Char8 as B
 import Data.ByteString.Char8 (ByteString)
-import qualified Data.List as L
 import qualified Data.ByteString.Search as S
-import Data.ByteString.Lazy (fromStrict, toStrict)
+import Data.ByteString.Lazy (toStrict)
 import Data.Semigroup ((<>))
 
 data Options = Options
@@ -49,13 +47,13 @@ main = getOptionsParserInfo >>= execParser >>= \opt -> do
 
     case parseResult of
         Left errorMsg -> putStrLn errorMsg
-        Right log -> do
+        Right l -> do
             B.putStr $
                 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" <>
                 "<ADX>\n" <>
                 " <HEADER></HEADER>\n" <>
                 "  <RECORDS>\n"
-            mapM_ B.putStr $ map xmlRow $ logRecords log
+            mapM_ B.putStr $ map xmlRow $ logRecords l
             B.putStr $
                 " </RECORDS>\n" <>
                 "</ADX>\n"

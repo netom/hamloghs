@@ -15,6 +15,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
+  ghc-options:         -Wall
   exposed-modules:     HlAdif
                      , HlOptions
                      , HlLog
@@ -34,7 +35,7 @@ library
 executable hl-import
   hs-source-dirs:      app
   main-is:             hl-import.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
@@ -46,7 +47,7 @@ executable hl-import
 executable hl-export
   hs-source-dirs:      app
   main-is:             hl-export.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
@@ -56,7 +57,7 @@ executable hl-export
 executable hl-record
   hs-source-dirs:      app
   main-is:             hl-record.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
@@ -67,7 +68,7 @@ executable hl-record
 executable hl-merge
   hs-source-dirs:      app
   main-is:             hl-merge.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
@@ -77,7 +78,7 @@ executable hl-merge
 executable hl-to-list
   hs-source-dirs:      app
   main-is:             hl-to-list.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
@@ -87,7 +88,7 @@ executable hl-to-list
 executable hl-from-csv
   hs-source-dirs:      app
   main-is:             hl-from-csv.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
@@ -101,7 +102,7 @@ executable hl-from-csv
 executable hl-to-csv
   hs-source-dirs:      app
   main-is:             hl-to-csv.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
@@ -112,7 +113,7 @@ executable hl-to-csv
 executable hl-to-msoxml
   hs-source-dirs:      app
   main-is:             hl-to-msoxml.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
@@ -123,7 +124,7 @@ executable hl-to-msoxml
 executable hl-to-fods
   hs-source-dirs:      app
   main-is:             hl-to-fods.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
@@ -134,7 +135,7 @@ executable hl-to-fods
 executable hl-to-adx
   hs-source-dirs:      app
   main-is:             hl-to-adx.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , hamloghs
                      , optparse-applicative
@@ -159,7 +160,7 @@ test-suite hamloghs-test
   main-is:             Spec.hs
   build-depends:       base
                      , hamloghs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
 source-repository head

@@ -22,7 +22,7 @@ optionsParserInfo = info (helper <*> (
 
 parseErrorHandler :: Either String Log -> IO Log
 parseErrorHandler (Left errorMessage) = fail errorMessage
-parseErrorHandler (Right log) = return log
+parseErrorHandler (Right l) = return l
 
 doMerge :: Options -> IO ()
 doMerge opt = do

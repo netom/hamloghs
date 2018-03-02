@@ -1,13 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Data.Maybe
 import HlAdif
 import HlOptions
 import Options.Applicative
 import Prelude hiding (readFile, putStr)
-import System.Environment
-import System.IO hiding (readFile, putStr)
 import qualified Data.ByteString.Char8 as B
 import Data.Semigroup ((<>))
 
@@ -31,7 +28,7 @@ doExport opt = do
     parseResult <- adifLogParser <$> B.readFile (basedir opt ++ "/data/hl.adi")
     case parseResult of
         Left errorMsg -> putStrLn errorMsg
-        Right log -> B.putStr $ writeLog log
+        Right l -> B.putStr $ writeLog l
 
 main :: IO ()
 main = getOptionsParserInfo >>= execParser >>= doExport

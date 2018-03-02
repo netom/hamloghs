@@ -1,12 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Data.Maybe
 import HlAdif
 import HlOptions
 import Options.Applicative
 import Prelude hiding (readFile, putStr)
-import System.Environment
 import System.IO hiding (readFile, putStr)
 import qualified Data.ByteString.Char8 as B
 import Data.Semigroup ((<>))
@@ -32,4 +30,4 @@ main = getOptionsParserInfo >>= execParser >>= \opt -> do
 
     case parseResult of
         Left errorMsg -> putStrLn errorMsg
-        Right log -> putStrLn $ show log
+        Right l -> putStrLn $ show l

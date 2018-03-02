@@ -6,7 +6,6 @@ import HlLog
 import HlOptions
 import Options.Applicative
 import System.Environment
-import Data.Char
 import Data.List
 import Data.Time.Clock
 import Data.Time.Calendar
