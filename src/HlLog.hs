@@ -52,12 +52,16 @@ tMap :: (ByteString -> ByteString) -> Tag -> Tag
 tMap _ t@(CTag (_, Nothing)) = t
 tMap f   (CTag (n, Just(d, mbT))) = CTag (n, Just (f d, mbT))
 
+-- Turn a bytestring to an upper-case one
+bsUp :: ByteString -> ByteString
+bsUp = B.map CH.toUpper
+
 -- Take care of enforcing certain constraints and hide internals
 -- toTag name data dataType
 toTag :: ByteString -> Maybe ByteString -> Maybe ByteString -> Tag
-toTag n Nothing _         = toTag' (n, Nothing)
-toTag n (Just d) Nothing  = toTag' (n, Just (d, Nothing))
-toTag n (Just d) (Just t) = toTag' (n, Just (d, Just t))
+toTag n Nothing _         = toTag' (bsUp n, Nothing)
+toTag n (Just d) Nothing  = toTag' (bsUp n, Just (d, Nothing))
+toTag n (Just d) (Just t) = toTag' (bsUp n, Just (d, Just (bsUp t)))
 
 -- TODO: this operation can fail. Use Monad or MonadFail
 toTag' :: (ByteString, Maybe (ByteString, Maybe ByteString)) -> Tag
@@ -67,7 +71,7 @@ toTag' (n, mbP) -- The Name and a Maybe Pair
     | ucn `elem` ["TIME_ON", "TIME_OFF"] = (\x-> x <> B.replicate (6 - B.length x) '0') `tMap` ucnTag
 
     -- Use upper case in data with these tags
-    | ucn `elem` ["CALL", "GRIDSQUARE", "MY_GRIDSQUARE"] = toUpper `tMap` ucnTag
+    | ucn `elem` ["CALL", "GRIDSQUARE", "MY_GRIDSQUARE", "BAND", "MODE"] = toUpper `tMap` ucnTag
 
     -- Otherwise just use the uppercased-but-untreated tag
     | otherwise = ucnTag
@@ -122,6 +126,9 @@ records ts = map toRecord $ filter (not . null) $ S.splitWhen isEOR ts
 mergeTags :: [[Tag]] -> [Tag]
 mergeTags = map head . groupWith tagName . sortWith tagName . L.concat
 
+-- Merge QSO records after sorting.
+-- QSOs with the same QSO_DATE, TIME_ON and CALL considered the same,
+-- and their fields will be merged.
 mergeRecords :: [[Record]] -> [Record]
 mergeRecords = map (toRecord . mergeTags . map fromRecord) . groupWith qsoKey . sortWith qsoKey . L.concat
 
