@@ -156,6 +156,7 @@ showRecord r = B.intercalate " "
     , fromMaybe "---"    $ field "MODE"     r
     , fromMaybe "---" (field "BAND" r) <> "/" <> fromMaybe "---" (field "FREQ" r)
     , fromMaybe "---" (field "RST_RCVD" r) <> "/" <> fromMaybe "---" (field "RST_SENT" r)
+    , fromMaybe "" (field "COMMENT" r)
     ]
 
 showLog :: Log -> ByteString
