@@ -7,7 +7,6 @@ import HlLog
 import HlOptions
 import Options.Applicative
 import qualified Data.ByteString.Char8 as B
-import Data.Semigroup ((<>))
 import System.IO
 import Text.Regex.TDFA.ByteString
 
@@ -45,7 +44,6 @@ tagMatches expr (CTag (tname, mbtval)) =
                                 _              -> False
                         FlEq  ftname fvalue -> ftname == tname && tvalue == fvalue
                         FlNeq ftname fvalue -> ftname == tname && tvalue /= fvalue
-                        _ -> False
 
 recordMatches :: FlExp -> Record -> Bool
 recordMatches expr (CRecord ts) = any (tagMatches expr) ts

@@ -12,7 +12,6 @@ import qualified Data.ByteString.Char8 as B
 import Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.Search as S
 import Data.ByteString.Lazy (toStrict)
-import Data.Semigroup ((<>))
 
 data Options = Options
   { getInputHandle :: IO Handle

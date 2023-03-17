@@ -22,7 +22,6 @@ import Options.Applicative
 import System.Directory
 import System.Environment
 import System.IO
-import Data.Semigroup ((<>))
 import qualified Data.Attoparsec.ByteString.Char8 as AP
 import Text.Regex.Base.RegexLike
 import Text.Regex.TDFA.ByteString
@@ -46,7 +45,7 @@ parseAdifRecord s = do
         return $ toTag (B.pack $ fst t) (Just $ BU.fromString $ drop 1 $ snd t) Nothing
     else return $ toTag (B.pack s) Nothing Nothing
 
-parseChar :: Monad m => String -> m Char
+parseChar :: (Monad m, MonadFail m) => String -> m Char
 parseChar (c:[]) = return c
 parseChar _    = fail "A single character must be given."
 
@@ -101,7 +100,7 @@ apParseTagName = B.pack <$> AP.many1' (AP.letter_ascii <|> AP.digit <|> AP.char 
 apParseFlValue :: AP.Parser ByteString
 apParseFlValue = AP.takeByteString
 
-runEither :: Monad m => Either String a -> m a
+runEither :: (Monad m, MonadFail m) => Either String a -> m a
 runEither e =
     case e of
     Right x -> return x
@@ -118,7 +117,7 @@ apParseFlExp
     <|> ( FlNeq <$> apParseTagName <*> ( (AP.string "!=") >> apParseFlValue ) )
     <|> ( AP.string "*" >> FlEx <$> apParseTagName )
 
-parseFlExp :: Monad m => String -> m FlExp
+parseFlExp :: (Monad m, MonadFail m) => String -> m FlExp
 parseFlExp s =
     case AP.parseOnly (apParseFlExp <* AP.endOfInput) (B.pack s) of
     Right flExp -> return flExp

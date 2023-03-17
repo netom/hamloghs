@@ -34,7 +34,6 @@ import GHC.Exts (groupWith, sortWith)
 import qualified Data.List as L
 import Data.Maybe
 import qualified Data.Char as CH
-import Data.Monoid
 import qualified Data.Vector as V
 
 type TagName = ByteString

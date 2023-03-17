@@ -7,7 +7,6 @@ import Options.Applicative
 import System.Directory
 import System.IO
 import qualified Data.ByteString.Char8 as B
-import Data.Semigroup ((<>))
 
 data Options = Options
   { basedir :: String

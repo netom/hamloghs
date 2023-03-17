@@ -12,7 +12,6 @@ import Data.Time.Calendar
 import Text.Printf
 import GHC.Int
 import qualified Data.ByteString.Char8 as B
-import Data.Semigroup ((<>))
 
 data Options = Options
   { tags :: [Tag]

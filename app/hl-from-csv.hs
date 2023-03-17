@@ -11,17 +11,16 @@ import Data.Csv
 import Data.Vector as V
 import qualified Data.ByteString.Char8 as B
 import Data.ByteString.Lazy (fromStrict)
-import Data.Semigroup ((<>))
 
-data Options = Options
+data AppOptions = AppOptions
   { getInputHandle :: IO Handle
   , separator :: Char
   }
 
-getOptionsParserInfo :: IO (ParserInfo Options)
+getOptionsParserInfo :: IO (ParserInfo AppOptions)
 getOptionsParserInfo = do
     return $ info (helper <*> (
-        Options
+        AppOptions
             <$> inputHandleArgument
             <*> separatorOption
       )) (

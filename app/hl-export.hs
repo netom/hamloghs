@@ -6,7 +6,6 @@ import HlOptions
 import Options.Applicative
 import Prelude hiding (readFile, putStr)
 import qualified Data.ByteString.Char8 as B
-import Data.Semigroup ((<>))
 
 data Options = Options
   { basedir :: String

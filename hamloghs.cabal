@@ -1,5 +1,5 @@
 name:                hamloghs
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            Ham radio log in Haskell
 description:         Log contacts, search, import, export, edit data
 homepage:            https://github.com/netom/hamloghs#readme
